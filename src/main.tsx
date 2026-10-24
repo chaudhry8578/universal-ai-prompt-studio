@@ -391,7 +391,7 @@ function UGCWorkspace() {
         <div className="ugc-hero-art" aria-hidden="true">
           <div className="ugc-art-orbit orbit-one" /><div className="ugc-art-orbit orbit-two" />
           <span className="ugc-art-spark spark-one">✦</span><span className="ugc-art-spark spark-two">✳</span>
-          <div className="ugc-art-flower"><i /><i /><i /><i /><i /><b /></div>
+          <PandaArtwork variant="ugc" className="ugc-panda-illustration" />
           <div className="ugc-art-card"><span>YOUR SCENE, YOUR STORY</span><strong>Made to<br />feel real.</strong><i>✷</i></div>
           <div className="ugc-art-caption">01 — CREATOR STUDIO</div>
         </div>
@@ -506,37 +506,51 @@ function UGCWorkspace() {
   )
 }
 
-function PandaArtwork() {
+function PandaArtwork({ variant = 'hero', className = '', label = 'Original illustrated panda character' }: { variant?: string; className?: string; label?: string }) {
+  const accent = variant === 'drama' ? '#ff4b66' : variant === 'faceless' ? '#b780ff' : variant === 'storyboard' ? '#e79cff' : '#f05baf'
+  const coatId = `panda-coat-${variant}`
+  const suitId = `panda-suit-${variant}`
+  const glowId = `panda-glow-${variant}`
+  const shadowId = `panda-shadow-${variant}`
   return (
-    <svg viewBox="0 0 520 390" role="img" aria-label="A cute panda surrounded by soft pink sparkles">
+    <svg className={className} viewBox="0 0 520 390" role="img" aria-label={label}>
       <defs>
-        <radialGradient id="panda-glow"><stop stopColor="#fff" stopOpacity=".96" /><stop offset=".48" stopColor="#f4b5d1" stopOpacity=".48" /><stop offset="1" stopColor="#edb0d1" stopOpacity="0" /></radialGradient>
-        <linearGradient id="panda-coat" x1="157" y1="220" x2="359" y2="365" gradientUnits="userSpaceOnUse"><stop stopColor="#403047" /><stop offset="1" stopColor="#1f172b" /></linearGradient>
-        <linearGradient id="panda-sweater" x1="188" y1="275" x2="328" y2="365" gradientUnits="userSpaceOnUse"><stop stopColor="#e8a5c4" /><stop offset="1" stopColor="#b978aa" /></linearGradient>
-        <filter id="panda-shadow" x="86" y="27" width="354" height="365" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="13" /></filter>
+        <radialGradient id={glowId}><stop stopColor={accent} stopOpacity=".42" /><stop offset=".58" stopColor="#8e39ba" stopOpacity=".18" /><stop offset="1" stopColor="#21102f" stopOpacity="0" /></radialGradient>
+        <linearGradient id={coatId} x1="157" y1="220" x2="359" y2="365" gradientUnits="userSpaceOnUse"><stop stopColor="#393247" /><stop offset=".48" stopColor="#211d2d" /><stop offset="1" stopColor="#100e19" /></linearGradient>
+        <linearGradient id={suitId} x1="188" y1="275" x2="328" y2="365" gradientUnits="userSpaceOnUse"><stop stopColor={accent} /><stop offset=".48" stopColor="#75325f" /><stop offset="1" stopColor="#282033" /></linearGradient>
+        <radialGradient id={`panda-face-${variant}`} cx=".36" cy=".24" r=".82"><stop stopColor="#fff" /><stop offset=".68" stopColor="#f7f1f4" /><stop offset="1" stopColor="#d7cbd8" /></radialGradient>
+        <linearGradient id={`panda-eye-${variant}`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#342c3d" /><stop offset=".58" stopColor="#111019" /><stop offset="1" stopColor="#06060a" /></linearGradient>
+        <filter id={shadowId} x="60" y="5" width="400" height="390" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="13" /></filter>
       </defs>
-      <ellipse cx="262" cy="210" rx="190" ry="170" fill="url(#panda-glow)" />
-      <ellipse cx="259" cy="353" rx="137" ry="20" fill="#9a5c8b" fillOpacity=".15" filter="url(#panda-shadow)" />
-      <path d="M147 341c0-70 42-127 113-127s113 57 113 127v20H147v-20Z" fill="url(#panda-coat)" />
-      <path d="M181 292c18-21 48-34 79-34s61 13 79 34l-15 68H196l-15-68Z" fill="url(#panda-sweater)" />
-      <path d="M208 272c13 12 31 19 52 19s39-7 52-19" stroke="#fff0f6" strokeOpacity=".8" strokeWidth="4" strokeLinecap="round" />
-      <path d="M164 247c-20 12-34 33-36 60-1 13 10 23 22 18l48-20-34-58ZM356 247c20 12 34 33 36 60 1 13-10 23-22 18l-48-20 34-58Z" fill="#282032" />
-      <path d="m217 282 43 24 43-24-13-18h-60l-13 18Z" fill="#fff3f7" />
-      <path d="m260 307 18 13-18 15-18-15 18-13Z" fill="#cf78a9" />
-      <circle cx="185" cy="102" r="42" fill="#282032" /><circle cx="337" cy="102" r="42" fill="#282032" />
-      <path d="M150 156c0-58 48-105 110-105s110 47 110 105-48 109-110 109-110-51-110-109Z" fill="#fffaf8" />
-      <ellipse cx="214" cy="150" rx="27" ry="35" transform="rotate(24 214 150)" fill="#302539" />
-      <ellipse cx="306" cy="150" rx="27" ry="35" transform="rotate(-24 306 150)" fill="#302539" />
-      <ellipse cx="219" cy="147" rx="8" ry="11" fill="#fff" /><ellipse cx="301" cy="147" rx="8" ry="11" fill="#fff" />
-      <circle cx="222" cy="145" r="3" fill="#302539" /><circle cx="298" cy="145" r="3" fill="#302539" />
-      <ellipse cx="184" cy="188" rx="17" ry="9" fill="#f4a9c7" fillOpacity=".6" /><ellipse cx="336" cy="188" rx="17" ry="9" fill="#f4a9c7" fillOpacity=".6" />
-      <path d="M251 178c0-6 5-10 11-10s11 4 11 10c0 5-7 10-11 12-4-2-11-7-11-12Z" fill="#372638" />
-      <path d="M262 190c-1 12-9 16-18 14m18-14c1 12 9 16 18 14" stroke="#5d4053" strokeWidth="3" strokeLinecap="round" />
-      <path d="m347 82 6-17 7 17 17 6-17 7-7 17-6-17-17-7 17-6Z" fill="#de8cb7" />
-      <path d="m115 168 4-11 5 11 11 4-11 5-5 11-4-11-11-5 11-4Z" fill="#bb88c9" />
-      <circle cx="391" cy="205" r="4" fill="#d87fae" /><circle cx="132" cy="246" r="5" fill="#d87fae" />
-      <path d="M164 94c7-16 20-27 35-32m118 1c15 5 28 16 35 31" stroke="#76627b" strokeOpacity=".65" strokeWidth="3" strokeLinecap="round" />
-      <path d="M219 329c12 7 26 11 41 11s29-4 41-11" stroke="#fff2f7" strokeOpacity=".62" strokeWidth="3" strokeLinecap="round" />
+      <ellipse cx="262" cy="204" rx="205" ry="190" fill={`url(#${glowId})`} />
+      <ellipse cx="259" cy="356" rx="137" ry="18" fill="#d13e9c" fillOpacity=".32" filter={`url(#${shadowId})`} />
+      <path d="M143 347c0-75 43-137 117-137s117 62 117 137v16H143v-16Z" fill={`url(#${coatId})`} />
+      <path d="M181 291c18-21 48-34 79-34s61 13 79 34l-15 74H196l-15-74Z" fill={`url(#${suitId})`} />
+      <path d="M191 293c20 15 44 23 69 23s49-8 69-23l-8 72H199l-8-72Z" fill="#15131d" fillOpacity=".52" />
+      <path d="m217 276 43 33 43-33-13-18h-60l-13 18Z" fill="#f1eaf0" />
+      <path d="m260 304 18 13-18 15-18-15 18-13Z" fill={accent} />
+      <path d="M164 244c-21 13-35 36-36 64-1 14 10 24 22 19l49-21-35-62ZM356 244c21 13 35 36 36 64 1 14-10 24-22 19l-49-21 35-62Z" fill={`url(#${coatId})`} />
+      <path d="M184 252c10 5 18 13 23 22m129-22c-10 5-18 13-23 22" stroke="#fff" strokeOpacity=".2" strokeWidth="5" strokeLinecap="round" />
+      <circle cx="185" cy="101" r="44" fill={`url(#${coatId})`} /><circle cx="337" cy="101" r="44" fill={`url(#${coatId})`} />
+      <circle cx="185" cy="96" r="26" fill="#100f18" fillOpacity=".64" /><circle cx="337" cy="96" r="26" fill="#100f18" fillOpacity=".64" />
+      <path d="M150 157c0-58 48-105 110-105s110 47 110 105-48 109-110 109-110-51-110-109Z" fill={`url(#panda-face-${variant})`} />
+      <path d="M164 92c16-25 43-41 73-44m43 1c30 4 56 20 72 44" fill="none" stroke="#fff" strokeOpacity=".76" strokeWidth="5" strokeLinecap="round" />
+      <ellipse cx="214" cy="151" rx="28" ry="37" transform="rotate(24 214 151)" fill={`url(#panda-eye-${variant})`} />
+      <ellipse cx="306" cy="151" rx="28" ry="37" transform="rotate(-24 306 151)" fill={`url(#panda-eye-${variant})`} />
+      <ellipse cx="219" cy="144" rx="9" ry="12" fill="#fff" /><ellipse cx="301" cy="144" rx="9" ry="12" fill="#fff" />
+      <circle cx="222" cy="143" r="3.5" fill="#17131e" /><circle cx="298" cy="143" r="3.5" fill="#17131e" />
+      <path d="M189 123c9-12 20-17 33-18m99 0c13 1 24 6 33 18" fill="none" stroke="#fff" strokeOpacity=".16" strokeWidth="4" strokeLinecap="round" />
+      <ellipse cx="184" cy="190" rx="19" ry="10" fill={accent} fillOpacity=".25" /><ellipse cx="336" cy="190" rx="19" ry="10" fill={accent} fillOpacity=".25" />
+      <path d="M251 179c0-6 5-10 11-10s11 4 11 10c0 5-7 10-11 12-4-2-11-7-11-12Z" fill="#302635" />
+      <path d="M262 192c-1 12-9 16-18 14m18-14c1 12 9 16 18 14" stroke="#5b4657" strokeWidth="3" strokeLinecap="round" />
+      <path d="m347 82 6-17 7 17 17 6-17 7-7 17-6-17-17-7 17-6Z" fill={accent} />
+      <path d="m115 168 4-11 5 11 11 4-11 5-5 11-4-11-11-5 11-4Z" fill="#b780ff" />
+      <circle cx="391" cy="205" r="4" fill={accent} /><circle cx="132" cy="246" r="5" fill="#ff5d91" />
+      {variant === 'faceless' && <g fill="none" stroke={accent} strokeWidth="8"><path d="M157 146c-24-4-38 11-38 33v14c0 15 10 25 25 25h10v-42h-10" /><path d="M363 146c24-4 38 11 38 33v14c0 15-10 25-25 25h-10v-42h10" /><path d="M165 83c16-35 43-53 95-53s79 18 95 53" /></g>}
+      {variant === 'drama' && <g fill={accent}><path d="m219 59 12-25 12 25 27 4-19 19 5 27-25-13-25 13 5-27-19-19Z" /><path d="m314 73 8-16 8 16 17 3-12 12 3 17-16-8-15 8 3-17-13-12Z" opacity=".75" /></g>}
+      {variant === 'storyboard' && <g><path d="m169 80 16-35c25 5 39 16 46 34l-15 19-40-4Z" fill="#231c33" stroke={accent} strokeWidth="4" /><path d="m179 49 7-15 52 19-7 15Z" fill={accent} /><path d="m179 50-10-6-4 16 14-1Z" fill="#f5d9c5" /></g>}
+      {variant === 'ugc' && <g fill="none" stroke={accent} strokeWidth="5" strokeLinecap="round"><path d="M150 122c-13 5-22 15-26 28m246-28c13 5 22 15 26 28" /><path d="m122 137 8-18 8 18 18 7-18 7-8 18-8-18-18-7Z" fill={accent} stroke="none" /></g>}
+      <path d="M219 334c12 7 26 11 41 11s29-4 41-11" stroke="#fff" strokeOpacity=".55" strokeWidth="3" strokeLinecap="round" />
     </svg>
   )
 }
@@ -593,9 +607,12 @@ function App() {
         <section className="workspace">
           <button className="back-link" onClick={() => setActiveGenerator(null)}><span aria-hidden="true">←</span> ALL GENERATORS</button>
           <div className="workspace-heading">
-            <div className="eyebrow"><span className="eyebrow-line" /> {activeGenerator.number} / {activeGenerator.tag}</div>
-            <h1>{activeGenerator.name}</h1>
-            <p>{activeGenerator.description}</p>
+            <div className="workspace-heading-copy">
+              <div className="eyebrow"><span className="eyebrow-line" /> {activeGenerator.number} / {activeGenerator.tag}</div>
+              <h1>{activeGenerator.name}</h1>
+              <p>{activeGenerator.description}</p>
+            </div>
+            <div className={`workspace-panda workspace-panda-${activeGenerator.id}`} aria-hidden="true"><PandaArtwork variant={activeGenerator.id} label={`${activeGenerator.name} panda illustration`} /></div>
           </div>
           <div className="workspace-grid">
             <section className="editor-panel">
@@ -652,18 +669,19 @@ function App() {
               <h1>Dream it.<br /><em>Make it magic.</em></h1>
               <p>One little idea can become something wonderful. Choose a studio and let’s make it happen.</p>
               <a className="studio-hero-link" href="#generator-library">EXPLORE THE STUDIOS <span aria-hidden="true">↓</span></a>
-              <div className="studio-hero-caption"><span className="studio-live-dot" /> SIX CREATIVE STUDIOS <i /> MADE FOR BIG IDEAS</div>
+              <div className="studio-hero-caption"><span className="studio-live-dot" /> FOUR CREATIVE STUDIOS <i /> MADE FOR BIG IDEAS</div>
             </div>
-            <div className="studio-panda-art"><span className="panda-art-glint glint-a">✦</span><span className="panda-art-glint glint-b">✧</span><PandaArtwork /><span className="panda-art-label"><i>✿</i> YOUR IDEAS HAVE A FRIEND</span></div>
+            <div className="studio-panda-art"><span className="panda-art-glint glint-a">✦</span><span className="panda-art-glint glint-b">✧</span><PandaArtwork variant="hero" label="Original cinematic panda studio illustration" /><span className="panda-art-label"><i>✦</i> YOUR IDEAS HAVE A FRIEND</span></div>
           </section>
 
           <section className="studio-library" id="generator-library" aria-label="Creative generators">
-            <div className="studio-library-heading"><div><span className="studio-section-kicker">A STUDIO FOR EVERY STORY</span><h2>Where will your idea go?</h2></div><span className="studio-count">01 <i /> 06</span></div>
+            <div className="studio-library-heading"><div><span className="studio-section-kicker">A STUDIO FOR EVERY STORY</span><h2>Where will your idea go?</h2></div><span className="studio-count">04 <i /> STUDIOS</span></div>
             <div className="studio-card-grid">
               {generators.map((generator) => (
                 <button className={`studio-card studio-card-${generator.id}`} key={generator.id} onClick={() => openGenerator(generator)} aria-label={`Open ${generator.name}`}>
                   <img src={`https://images.unsplash.com/${generator.image}?auto=format&fit=crop&w=1000&q=85`} alt="" loading="lazy" />
                   <span className="studio-card-wash" />
+                  <span className="studio-card-panda" aria-hidden="true"><PandaArtwork variant={generator.id} label={`${generator.name} panda illustration`} /></span>
                   <span className="studio-card-top"><span>{generator.number} <i /> {generator.tag}</span><span className="studio-card-arrow" aria-hidden="true">↗</span></span>
                   <span className="studio-card-bottom"><span className="studio-card-name">{generator.name}</span><span className="studio-card-description">{generator.description}</span></span>
                   <span className="studio-card-frame" />
