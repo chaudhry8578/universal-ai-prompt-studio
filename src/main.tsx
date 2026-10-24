@@ -36,28 +36,8 @@ const generators: Generator[] = [
     promptLead: 'Create a faceless short-form video about',
   },
   {
-    id: 'ugc-own',
-    number: '03',
-    name: 'UGC OWN CREATIVE',
-    title: 'Your vision, in frame.',
-    description: 'Shape a creator brief around your own creative direction.',
-    image: 'photo-1529139574466-a303027c1d8b',
-    tag: 'CUSTOM CREATIVE',
-    promptLead: 'Direct a creator to bring this custom UGC concept to life:',
-  },
-  {
-    id: 'faceless-own',
-    number: '04',
-    name: 'FACELESS OWN CREATIVE',
-    title: 'Build your own world.',
-    description: 'Turn a distinct visual idea into a faceless ad concept.',
-    image: 'photo-1518837695005-2083093ee35b',
-    tag: 'CUSTOM CREATIVE',
-    promptLead: 'Build a faceless visual story from this creative direction:',
-  },
-  {
     id: 'drama',
-    number: '05',
+    number: '03',
     name: 'AI.DRAMA STORY',
     title: 'A little more drama.',
     description: 'Cinematic characters, high stakes, and an impossible hook.',
@@ -67,7 +47,7 @@ const generators: Generator[] = [
   },
   {
     id: 'storyboard',
-    number: '06',
+    number: '04',
     name: 'STORYBOARD',
     title: 'See every scene.',
     description: 'Break an idea into a shoot-ready sequence of frames.',
@@ -474,7 +454,7 @@ function UGCWorkspace() {
         <div className="ugc-right-column">
           <section className="ugc-panel ugc-brief-panel">
             <div className="ugc-panel-heading"><div><span className="ugc-step-label">02 / YOUR CREATIVE BRIEF</span><h2>What are we making?</h2></div></div>
-            <label className="ugc-field-label" htmlFor="ugc-brief">PRODUCT, STORY, AUDIENCE, OR MOMENT</label>
+            <label className="ugc-field-label" htmlFor="ugc-brief">PRODUCT, STORY, AUDIENCE, OR YOUR OWN CREATIVE DIRECTION</label>
             <textarea id="ugc-brief" value={brief} onChange={(event) => { setBrief(event.target.value); clearLaterStages() }} placeholder="A creator shares how this skincare product fits into her morning routine before a busy day..." rows={4} />
             <button className="ugc-action-button" onClick={generateImagePrompt} disabled={!brief.trim() || !!busy}>{busy === 'image-prompt' ? 'GENERATING…' : 'GENERATE IMAGE PROMPT'} <b>↗</b></button>
             <p className="ugc-ai-status">{ugcAIBaseUrl ? 'AI image prompt generation is available through your configured backend.' : 'Without a backend, this creates a clearly labeled prompt template; it does not inspect your images or use AI.'}</p>
@@ -567,18 +547,23 @@ function App() {
   const [tone, setTone] = useState('Warm & honest')
   const [result, setResult] = useState('')
   const [copied, setCopied] = useState(false)
+  const [facelessOwnCreative, setFacelessOwnCreative] = useState(false)
 
   function openGenerator(generator: Generator) {
     setActiveGenerator(generator)
     setBrief('')
     setResult('')
     setCopied(false)
+    setFacelessOwnCreative(false)
   }
 
   function createPrompt() {
     if (!activeGenerator || !brief.trim()) return
+    const promptLead = activeGenerator.id === 'faceless' && facelessOwnCreative
+      ? 'Build a faceless visual story from this creative direction:'
+      : activeGenerator.promptLead
     setResult(
-      `${activeGenerator.promptLead} ${brief.trim()}. Keep the tone ${tone.toLowerCase()}. Open with a compelling first-second hook, build a clear emotional or practical payoff, and close with a natural call to action. Use vivid, specific details and a polished, platform-native style.`,
+      `${promptLead} ${brief.trim()}. Keep the tone ${tone.toLowerCase()}. Open with a compelling first-second hook, build a clear emotional or practical payoff, and close with a natural call to action. Use vivid, specific details and a polished, platform-native style.`,
     )
     setCopied(false)
   }
@@ -615,6 +600,18 @@ function App() {
           <div className="workspace-grid">
             <section className="editor-panel">
               <div className="panel-heading"><span>01</span><h2>Set the scene</h2></div>
+              {activeGenerator.id === 'faceless' && (
+                <label htmlFor="faceless-creative-mode">CREATIVE MODE</label>
+              )}
+              {activeGenerator.id === 'faceless' && (
+                <select id="faceless-creative-mode" value={facelessOwnCreative ? 'own' : 'standard'} onChange={(event) => {
+                  setFacelessOwnCreative(event.target.value === 'own')
+                  setResult('')
+                }}>
+                  <option value="standard">Faceless video</option>
+                  <option value="own">Own Creative direction</option>
+                </select>
+              )}
               <label htmlFor="brief">YOUR CREATIVE BRIEF</label>
               <textarea
                 id="brief"
