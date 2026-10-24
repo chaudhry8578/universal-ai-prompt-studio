@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { createRoot } from 'react-dom/client'
+import StoryboardGenerator from './StoryboardGenerator'
 import './styles.css'
 
 type Generator = {
@@ -56,6 +57,147 @@ const generators: Generator[] = [
     promptLead: 'Storyboard a short-form video about',
   },
 ]
+
+const hyunaStoryMasterPrompt = `HYUNA STORY — NEW MASTER PROMPT RULES
+
+1. Ask if Anong story ang gagawin.
+
+NO ON-SCREEN TEXT LOCK
+/NoOnScreenText
+/NoSubtitles
+/NoCaptions
+/NoTextOverlays
+/NoWatermarks
+/NoRandomLetters
+/NoFloatingText
+
+- Bawal ang anumang unnecessary text sa image at video.
+- EXCEPTION: Kapag may text message, chat conversation, o phone notification na importante sa kwento, dapat visible at readable ang actual message sa phone screen.
+- Walang subtitles kahit may dialogue.
+- Natural cinematic visuals only.
+
+2. EVERY 20 SECONDS — NEW EVENT & LOCATION
+
+/ChangeEventEvery20Seconds
+/ChangeLocationEvery20Seconds
+/NewActionEvery20Seconds
+/ContinuousStoryProgression
+/LogicalSceneTransitions
+/NoRandomStoryJumps
+
+- Bawat scene ay 10 seconds.
+- Every 2 scenes (20 seconds), magbabago ang location at pangunahing pangyayari.
+- Scene 1–2: Same location, connected actions.
+- Scene 3–4: New location, new event.
+- Scene 5–6: New location, next story development.
+- Hindi paulit-ulit ang ginagawa ng characters.
+- Bawat bagong pangyayari ay dapat may connection sa previous scene.
+- Natural ang paglipat ng location, may malinaw na dahilan kung bakit lumipat ang characters.
+- Hindi minamadali ang story development.
+
+3. CHARACTER & STORY CONTINUITY LOCK
+
+/CharacterIdentityLock
+/CharacterOutfitLock
+/CharacterVoiceLock
+/StoryContinuityLock
+/PreviousSceneMemory
+/RealisticSceneTransitions
+/NoFaceMorphing
+/NoCharacterSwapping
+
+- Same faces, hairstyles, voices, and accessories.
+- Outfits remain consistent unless may logical wardrobe change.
+- May consequences ang actions at dialogue sa previous scenes.
+- Walang biglang pagbabago ng personality o relationship.
+- Laging may beginning, middle, climax, at ending.
+
+4. VIDEO PRODUCTION LOCK
+   Always may /command sa video prompt
+
+   /Speak character only 1-2 person on the screen only
+   /Video10Seconds
+   /Vertical9:16
+   /AllCameraMovementCompatible
+   /NaturalKalyeDialogue
+   /Taglish70PercentTagalog30PercentEnglish
+   /Dialog20-25WordsMaximum
+   /AccurateLipSync
+   /RealisticFacialExpressions
+   /NaturalBodyMovement
+   /LightingQuality8K
+   /NoBackgroundMusic
+   /NaturalAmbientSounds
+   /NoTimestamps
+   /SingleImageReferencePerScene
+
+   /SpeakingCharacterVisibilityLock /Maximum2VisibleCharacters /ActiveSpeakerLipSyncOnly /NoDialogueSwapping /NoExtraVisibleCharacters /CharacterVoiceLock
+
+   GOAL: Gumawa ng entertaining Filipino AI movie na bawat 20 seconds ay may bagong pangyayari at lugar, pero tuloy-tuloy, natural, at madaling sundan ang buong kwento.
+
+
+   ---
+
+   5EPISODE & STORY STRUCTURE LOCK
+   /15ScenesPerEpisode
+   /10EpisodesPerStory
+   /10SecondsPerScene
+   /150ScenesTotal
+   /CliffhangerEveryEpisode
+   /StrongEpisodeEnding
+   /ContinuousStoryProgression
+   /NoUnnecessaryFiller
+   /FinalEpisodeStoryResolution
+
+   - Every episode must contain exactly 15 scenes.
+   - Every complete story must contain exactly 10 episodes (150 scenes total).
+   - Every scene lasts exactly 10 seconds.
+   - Each episode lasts 2 minutes and 30 seconds.
+   - Scene 15 of Episodes 1–9 must end with a powerful cliffhanger, shocking revelation, emotional twist, betrayal, or suspense that makes viewers excited for the next episode.
+   - Build suspense naturally throughout the episode. Do not rush the story or introduce random twists.
+   - Episode 10 must deliver the final climax, resolve the main conflicts, and provide a satisfying ending. No Episode 11.
+
+   6. ONE-CLICK WORKFLOW LOCK
+      /AlwaysIncludeSlashCommands
+         /CreateImageButtonAfterImagePrompt
+            /CopyVideoPromptButtonAfterVideoPrompt
+               /OneSceneAtATime
+                  /WaitForApprovedImage
+
+                  - Always include the appropriate /commands in every video prompt.
+                  - After every image prompt, display a clickable button labeled "Create Image" that submits the approved scene image-generation request directly in ChatGPT.
+                  - After every video prompt, display a clickable button labeled "Copy Video Prompt" that copies the entire Google Flow video prompt, including all /commands, Visual, Action, Camera, Dialogue and Audio.
+                  - Follow the workflow: Image Prompt → Create Image → Approved Image → Video Prompt → Copy Video Prompt → Next Scene.
+                  - Never skip image approval before creating the video prompt.
+                  - Keep every scene prompt concise and ready to use.
+                    —-------------------------------------
+                      SINGLE IMAGE GENERATION LOCK
+
+                      /SingleImageOnly /NoStoryboardLayout /NoCollage /NoSplitScreen /NoMultiPanel /OneSceneOneImage /SingleCinematicFrame /Vertical9x16 /FullFrameComposition /NoBorders /NoGridLayout
+
+                      - Generate exactly ONE full-frame cinematic image per scene.
+                      - NEVER create a storyboard, collage, contact sheet, split-screen, grid, or multiple panels.
+                      - Do not combine multiple camera angles, moments, or actions in one image.
+                      - Each image must show only ONE specific moment from the current scene.
+                      - Use one continuous vertical 9:16 composition filling the entire image.
+                      - Preserve character identity, outfit, location, and visual continuity.
+                      - Do not add text, captions, labels, borders, or watermarks.
+                      - Even when the user requests a storyboard-style story, generate only ONE individual scene image at a time.
+                      - Wait for image approval before generating the video prompt.
+
+                      Ayan wag mo babaguhin`
+
+const homepagePandaImages = {
+  portrait: '/images/file_00000000c5e08211873d150d4db39bde.png',
+  studio: '/images/file_00000000cd5482119047ced75a741b53.png',
+}
+
+const generatorPandaImages: Record<Generator['id'], string> = {
+  ugc: homepagePandaImages.portrait,
+  faceless: homepagePandaImages.studio,
+  drama: homepagePandaImages.portrait,
+  storyboard: homepagePandaImages.studio,
+}
 
 type UploadSlot = 'character' | 'outfit' | 'product'
 
@@ -391,7 +533,6 @@ function UGCWorkspace() {
         <div className="ugc-hero-art" aria-hidden="true">
           <div className="ugc-art-orbit orbit-one" /><div className="ugc-art-orbit orbit-two" />
           <span className="ugc-art-spark spark-one">✦</span><span className="ugc-art-spark spark-two">✳</span>
-          <PandaArtwork variant="ugc" className="ugc-panda-illustration" />
           <div className="ugc-art-card"><span>YOUR SCENE, YOUR STORY</span><strong>Made to<br />feel real.</strong><i>✷</i></div>
           <div className="ugc-art-caption">01 — CREATOR STUDIO</div>
         </div>
@@ -506,52 +647,277 @@ function UGCWorkspace() {
   )
 }
 
-function PandaArtwork({ variant = 'hero', className = '', label = 'Original illustrated panda character' }: { variant?: string; className?: string; label?: string }) {
-  const accent = variant === 'drama' ? '#ff4b66' : variant === 'faceless' ? '#b780ff' : variant === 'storyboard' ? '#e79cff' : '#f05baf'
-  const coatId = `panda-coat-${variant}`
-  const suitId = `panda-suit-${variant}`
-  const glowId = `panda-glow-${variant}`
-  const shadowId = `panda-shadow-${variant}`
+type FacelessReference = { file: File; preview: string }
+type FacelessReferenceSlot = 'product' | 'background'
+type FacelessHand = 'FEMALE HAND' | 'MALE HAND' | 'NO HAND'
+type FacelessShot =
+  | 'HERO SHOT'
+  | 'ON TABLE SHOT'
+  | 'HAND-HELD SHOT'
+  | 'WIDE SHOT'
+  | 'CLOSE-UP DETAIL SHOT'
+  | 'PICK-UP SHOT'
+  | 'OPENING / INTERACTION SHOT'
+  | 'TOP VIEW / FLAT LAY'
+  | '45° / THREE-QUARTER SHOT'
+  | 'UGC LIFESTYLE SHOT'
+type FacelessBackground = 'BACKGROUND IMAGE 2' | 'AI CHOOSE'
+
+const facelessImageEndpoint = import.meta.env.VITE_UGC_IMAGE_ENDPOINT
+const facelessAIBaseUrl = import.meta.env.VITE_UGC_AI_API_URL?.replace(/\/$/, '')
+const facelessShotOptions: FacelessShot[] = [
+  'HERO SHOT',
+  'ON TABLE SHOT',
+  'HAND-HELD SHOT',
+  'WIDE SHOT',
+  'CLOSE-UP DETAIL SHOT',
+  'PICK-UP SHOT',
+  'OPENING / INTERACTION SHOT',
+  'TOP VIEW / FLAT LAY',
+  '45° / THREE-QUARTER SHOT',
+  'UGC LIFESTYLE SHOT',
+]
+
+function FacelessProductGenerator({ onBack }: { onBack: () => void }) {
+  const [references, setReferences] = useState<Partial<Record<FacelessReferenceSlot, FacelessReference>>>({})
+  const [hand, setHand] = useState<FacelessHand | ''>('')
+  const [shot, setShot] = useState<FacelessShot | ''>('')
+  const [background, setBackground] = useState<FacelessBackground | ''>('')
+  const [generatedImage, setGeneratedImage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const previewUrls = useRef<string[]>([])
+  const hasCompleteSettings = Boolean(references.product && hand && shot && background &&
+    (background !== 'BACKGROUND IMAGE 2' || references.background))
+  const imageEndpoint = facelessImageEndpoint || (facelessAIBaseUrl ? `${facelessAIBaseUrl}/images` : '')
+
+  useEffect(() => () => {
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url))
+  }, [])
+
+  function updateReference(slot: FacelessReferenceSlot, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Choose a valid image file.')
+      return
+    }
+    const preview = URL.createObjectURL(file)
+    previewUrls.current.push(preview)
+    if (references[slot]) URL.revokeObjectURL(references[slot].preview)
+    setReferences((current) => ({ ...current, [slot]: { file, preview } }))
+    setGeneratedImage('')
+    setError('')
+  }
+
+  function removeReference(slot: FacelessReferenceSlot) {
+    const existingUrl = references[slot]?.preview
+    if (existingUrl) URL.revokeObjectURL(existingUrl)
+    setReferences((current) => {
+      const next = { ...current }
+      delete next[slot]
+      return next
+    })
+    setGeneratedImage('')
+    setError('')
+  }
+
+  function buildPrompt() {
+    const handDirection = hand === 'FEMALE HAND'
+      ? 'If a hand is shown, use a natural anatomically correct feminine hand with tasteful nail art.'
+      : hand === 'MALE HAND'
+        ? 'If a hand is shown, use a natural anatomically correct masculine hand with clean natural nails.'
+        : 'Show no hands.'
+    const backgroundDirection = background === 'BACKGROUND IMAGE 2'
+      ? 'Use the provided background image 2 as the scene background.'
+      : 'Choose a suitable premium commercial background for this product.'
+    const shotDirection = shot === 'CLOSE-UP DETAIL SHOT'
+      ? 'Use a close-up detail composition while keeping the entire product, every edge, handle, strap, and important feature fully inside the frame.'
+      : `Photograph the product as a ${shot?.toLowerCase()}.`
+    return [
+      'Create exactly one photorealistic premium product photograph in vertical 9:16 format.',
+      'PRODUCT IMAGE 1 is the authoritative product reference. Preserve its exact design, original colors, materials, logos, labels, packaging, physical proportions, and every visible product detail. Do not redesign, alter, obscure, or invent product features.',
+      shotDirection,
+      backgroundDirection,
+      handDirection,
+      'Keep the entire product completely visible and uncropped, including all edges, handles, straps, branding, and key features. Use realistic product materials, natural lighting, believable shadows, and a clean commercial composition.',
+      'Faceless photography only: no visible faces, heads, or full bodies. Show only hands, wrists, and limited forearms when needed. Use no more than one main accessory. Ensure natural hand anatomy and a realistic grip.',
+      'No watermark and no unnecessary added text.',
+    ].join(' ')
+  }
+
+  async function generateImage() {
+    if (!hasCompleteSettings || !references.product) return
+    if (!imageEndpoint) {
+      setError('Image generation is not configured. Add VITE_UGC_IMAGE_ENDPOINT or VITE_UGC_AI_API_URL for a secure image-generation backend that accepts product reference images.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const body = new FormData()
+      body.set('prompt', buildPrompt())
+      body.set('aspectRatio', '9:16')
+      body.set('settings', JSON.stringify({
+        generator: 'faceless-product-image',
+        handType: hand,
+        photographyShot: shot,
+        background,
+        aspectRatio: '9:16',
+      }))
+      body.set('product', references.product.file)
+      if (background === 'BACKGROUND IMAGE 2' && references.background) {
+        body.set('background', references.background.file)
+      }
+      const response = await fetch(imageEndpoint, { method: 'POST', body })
+      if (!response.ok) {
+        const detail = await response.text()
+        throw new Error(detail || `Image service returned ${response.status}.`)
+      }
+      const result: unknown = await response.json()
+      if (!result || typeof result !== 'object') throw new Error('The image service returned an unexpected response.')
+      const imageResult = result as { imageUrl?: unknown; imageBase64?: unknown; mimeType?: unknown }
+      const image = typeof imageResult.imageUrl === 'string' && imageResult.imageUrl.trim()
+        ? imageResult.imageUrl
+        : typeof imageResult.imageBase64 === 'string' && imageResult.imageBase64.trim()
+          ? `data:${typeof imageResult.mimeType === 'string' ? imageResult.mimeType : 'image/png'};base64,${imageResult.imageBase64}`
+          : ''
+      if (!image) throw new Error('The image service response must include imageUrl or imageBase64. Confirm the backend supports product and background reference inputs.')
+      setGeneratedImage(image)
+    } catch (caught) {
+      setGeneratedImage('')
+      setError(caught instanceof Error ? caught.message : 'Image generation failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function downloadGeneratedImage() {
+    if (!generatedImage) return
+    try {
+      const response = await fetch(generatedImage)
+      if (!response.ok) throw new Error(`Image download returned ${response.status}.`)
+      const downloadUrl = URL.createObjectURL(await response.blob())
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = 'faceless-product-image.png'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+    } catch (caught) {
+      setError(caught instanceof Error ? `Could not download the image: ${caught.message}` : 'Could not download the image.')
+    }
+  }
+
+  const uploadCard = (slot: FacelessReferenceSlot, title: string, required: boolean) => {
+    const reference = references[slot]
+    return (
+      <div className="faceless-upload-card" key={slot}>
+        <input
+          id={`faceless-${slot}-upload`}
+          className="faceless-file-input"
+          type="file"
+          accept="image/*"
+          onChange={(event) => updateReference(slot, event)}
+          aria-label={`Upload ${title}`}
+        />
+        <div className="faceless-upload-preview">
+          {reference ? <img src={reference.preview} alt={`${title} preview`} /> : <span aria-hidden="true">＋</span>}
+        </div>
+        <div className="faceless-upload-info">
+          <strong>{title}</strong>
+          <small>{required ? 'REQUIRED' : 'OPTIONAL'}</small>
+          <div className="faceless-upload-actions">
+            <label htmlFor={`faceless-${slot}-upload`}>{reference ? 'REPLACE' : 'UPLOAD'}</label>
+            {reference && <button type="button" onClick={() => removeReference(slot)}>REMOVE</button>}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <svg className={className} viewBox="0 0 520 390" role="img" aria-label={label}>
-      <defs>
-        <radialGradient id={glowId}><stop stopColor={accent} stopOpacity=".42" /><stop offset=".58" stopColor="#8e39ba" stopOpacity=".18" /><stop offset="1" stopColor="#21102f" stopOpacity="0" /></radialGradient>
-        <linearGradient id={coatId} x1="157" y1="220" x2="359" y2="365" gradientUnits="userSpaceOnUse"><stop stopColor="#393247" /><stop offset=".48" stopColor="#211d2d" /><stop offset="1" stopColor="#100e19" /></linearGradient>
-        <linearGradient id={suitId} x1="188" y1="275" x2="328" y2="365" gradientUnits="userSpaceOnUse"><stop stopColor={accent} /><stop offset=".48" stopColor="#75325f" /><stop offset="1" stopColor="#282033" /></linearGradient>
-        <radialGradient id={`panda-face-${variant}`} cx=".36" cy=".24" r=".82"><stop stopColor="#fff" /><stop offset=".68" stopColor="#f7f1f4" /><stop offset="1" stopColor="#d7cbd8" /></radialGradient>
-        <linearGradient id={`panda-eye-${variant}`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#342c3d" /><stop offset=".58" stopColor="#111019" /><stop offset="1" stopColor="#06060a" /></linearGradient>
-        <filter id={shadowId} x="60" y="5" width="400" height="390" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="13" /></filter>
-      </defs>
-      <ellipse cx="262" cy="204" rx="205" ry="190" fill={`url(#${glowId})`} />
-      <ellipse cx="259" cy="356" rx="137" ry="18" fill="#d13e9c" fillOpacity=".32" filter={`url(#${shadowId})`} />
-      <path d="M143 347c0-75 43-137 117-137s117 62 117 137v16H143v-16Z" fill={`url(#${coatId})`} />
-      <path d="M181 291c18-21 48-34 79-34s61 13 79 34l-15 74H196l-15-74Z" fill={`url(#${suitId})`} />
-      <path d="M191 293c20 15 44 23 69 23s49-8 69-23l-8 72H199l-8-72Z" fill="#15131d" fillOpacity=".52" />
-      <path d="m217 276 43 33 43-33-13-18h-60l-13 18Z" fill="#f1eaf0" />
-      <path d="m260 304 18 13-18 15-18-15 18-13Z" fill={accent} />
-      <path d="M164 244c-21 13-35 36-36 64-1 14 10 24 22 19l49-21-35-62ZM356 244c21 13 35 36 36 64 1 14-10 24-22 19l-49-21 35-62Z" fill={`url(#${coatId})`} />
-      <path d="M184 252c10 5 18 13 23 22m129-22c-10 5-18 13-23 22" stroke="#fff" strokeOpacity=".2" strokeWidth="5" strokeLinecap="round" />
-      <circle cx="185" cy="101" r="44" fill={`url(#${coatId})`} /><circle cx="337" cy="101" r="44" fill={`url(#${coatId})`} />
-      <circle cx="185" cy="96" r="26" fill="#100f18" fillOpacity=".64" /><circle cx="337" cy="96" r="26" fill="#100f18" fillOpacity=".64" />
-      <path d="M150 157c0-58 48-105 110-105s110 47 110 105-48 109-110 109-110-51-110-109Z" fill={`url(#panda-face-${variant})`} />
-      <path d="M164 92c16-25 43-41 73-44m43 1c30 4 56 20 72 44" fill="none" stroke="#fff" strokeOpacity=".76" strokeWidth="5" strokeLinecap="round" />
-      <ellipse cx="214" cy="151" rx="28" ry="37" transform="rotate(24 214 151)" fill={`url(#panda-eye-${variant})`} />
-      <ellipse cx="306" cy="151" rx="28" ry="37" transform="rotate(-24 306 151)" fill={`url(#panda-eye-${variant})`} />
-      <ellipse cx="219" cy="144" rx="9" ry="12" fill="#fff" /><ellipse cx="301" cy="144" rx="9" ry="12" fill="#fff" />
-      <circle cx="222" cy="143" r="3.5" fill="#17131e" /><circle cx="298" cy="143" r="3.5" fill="#17131e" />
-      <path d="M189 123c9-12 20-17 33-18m99 0c13 1 24 6 33 18" fill="none" stroke="#fff" strokeOpacity=".16" strokeWidth="4" strokeLinecap="round" />
-      <ellipse cx="184" cy="190" rx="19" ry="10" fill={accent} fillOpacity=".25" /><ellipse cx="336" cy="190" rx="19" ry="10" fill={accent} fillOpacity=".25" />
-      <path d="M251 179c0-6 5-10 11-10s11 4 11 10c0 5-7 10-11 12-4-2-11-7-11-12Z" fill="#302635" />
-      <path d="M262 192c-1 12-9 16-18 14m18-14c1 12 9 16 18 14" stroke="#5b4657" strokeWidth="3" strokeLinecap="round" />
-      <path d="m347 82 6-17 7 17 17 6-17 7-7 17-6-17-17-7 17-6Z" fill={accent} />
-      <path d="m115 168 4-11 5 11 11 4-11 5-5 11-4-11-11-5 11-4Z" fill="#b780ff" />
-      <circle cx="391" cy="205" r="4" fill={accent} /><circle cx="132" cy="246" r="5" fill="#ff5d91" />
-      {variant === 'faceless' && <g fill="none" stroke={accent} strokeWidth="8"><path d="M157 146c-24-4-38 11-38 33v14c0 15 10 25 25 25h10v-42h-10" /><path d="M363 146c24-4 38 11 38 33v14c0 15-10 25-25 25h-10v-42h10" /><path d="M165 83c16-35 43-53 95-53s79 18 95 53" /></g>}
-      {variant === 'drama' && <g fill={accent}><path d="m219 59 12-25 12 25 27 4-19 19 5 27-25-13-25 13 5-27-19-19Z" /><path d="m314 73 8-16 8 16 17 3-12 12 3 17-16-8-15 8 3-17-13-12Z" opacity=".75" /></g>}
-      {variant === 'storyboard' && <g><path d="m169 80 16-35c25 5 39 16 46 34l-15 19-40-4Z" fill="#231c33" stroke={accent} strokeWidth="4" /><path d="m179 49 7-15 52 19-7 15Z" fill={accent} /><path d="m179 50-10-6-4 16 14-1Z" fill="#f5d9c5" /></g>}
-      {variant === 'ugc' && <g fill="none" stroke={accent} strokeWidth="5" strokeLinecap="round"><path d="M150 122c-13 5-22 15-26 28m246-28c13 5 22 15 26 28" /><path d="m122 137 8-18 8 18 18 7-18 7-8 18-8-18-18-7Z" fill={accent} stroke="none" /></g>}
-      <path d="M219 334c12 7 26 11 41 11s29-4 41-11" stroke="#fff" strokeOpacity=".55" strokeWidth="3" strokeLinecap="round" />
-    </svg>
+    <section className="workspace faceless-workspace">
+      <button className="back-link" onClick={onBack}><span aria-hidden="true">←</span> ALL GENERATORS</button>
+      <div className="workspace-heading faceless-heading">
+        <div className="workspace-heading-copy">
+          <div className="eyebrow"><span className="eyebrow-line" /> 02 / FACELESS PRODUCT IMAGE</div>
+          <h1>FACELESS GENERATOR</h1>
+          <p>Upload a product and configure your premium product photograph.</p>
+        </div>
+      </div>
+      <div className="faceless-panel">
+        <section className="faceless-section">
+          <div className="faceless-section-title"><span>01 / REFERENCES</span><strong>Upload images</strong></div>
+          <div className="faceless-upload-grid">
+            {uploadCard('product', 'PRODUCT IMAGE 1', true)}
+            {uploadCard('background', 'BACKGROUND IMAGE 2', false)}
+          </div>
+        </section>
+
+        <div className="faceless-questionnaire">
+          <section className="faceless-section">
+            <div className="faceless-section-title"><span>02 / HAND TYPE</span><strong>Select hand type</strong></div>
+            <div className="faceless-option-grid">
+              {(['FEMALE HAND', 'MALE HAND', 'NO HAND'] as const).map((option) => (
+                <button className={`faceless-option ${hand === option ? 'is-selected' : ''}`} key={option} onClick={() => { setHand(option); setGeneratedImage(''); setError('') }} aria-pressed={hand === option}>{option}</button>
+              ))}
+            </div>
+          </section>
+          <section className="faceless-section">
+            <div className="faceless-section-title"><span>03 / PHOTOGRAPHY SHOT</span><strong>Select a shot</strong></div>
+            <div className="faceless-option-grid">
+              {facelessShotOptions.map((option) => (
+                <button className={`faceless-option ${shot === option ? 'is-selected' : ''}`} key={option} onClick={() => { setShot(option); setGeneratedImage(''); setError('') }} aria-pressed={shot === option}>{option}</button>
+              ))}
+            </div>
+          </section>
+          <section className="faceless-section">
+            <div className="faceless-section-title"><span>04 / BACKGROUND</span><strong>Select background</strong></div>
+            <div className="faceless-option-grid">
+              {(['BACKGROUND IMAGE 2', 'AI CHOOSE'] as const).map((option) => (
+                <button className={`faceless-option ${background === option ? 'is-selected' : ''}`} key={option} onClick={() => { setBackground(option); setGeneratedImage(''); setError('') }} aria-pressed={background === option}>{option}</button>
+              ))}
+            </div>
+            {background === 'BACKGROUND IMAGE 2' && !references.background && <p className="faceless-validation">Upload BACKGROUND IMAGE 2 to use this background option.</p>}
+            {background === 'BACKGROUND IMAGE 2' && <p className="faceless-validation">The configured image service must accept a multipart “background” reference field for this option.</p>}
+          </section>
+        </div>
+
+        {hasCompleteSettings && (
+          <section className="faceless-confirmation">
+            <div className="faceless-section-title"><span>05 / CONFIRMATION</span><strong>YOUR CONFIRMED SETTINGS</strong></div>
+            <dl>
+              <div><dt>Product</dt><dd>{references.product?.file.name}</dd></div>
+              <div><dt>Hand Type</dt><dd>{hand}</dd></div>
+              <div><dt>Photography Shot</dt><dd>{shot}</dd></div>
+              <div><dt>Background</dt><dd>{background}</dd></div>
+              <div><dt>Aspect Ratio</dt><dd>9:16</dd></div>
+            </dl>
+            <button className="faceless-generate-button" onClick={() => void generateImage()} disabled={busy}>
+              {busy ? 'GENERATING IMAGE…' : 'CONFIRM & GENERATE IMAGE'} <span aria-hidden="true">↗</span>
+            </button>
+          </section>
+        )}
+
+        {!imageEndpoint && <p className="faceless-service-note">Image generation unavailable: configure a secure backend with image-generation and product-reference support. No image will be simulated.</p>}
+        {error && <p className="faceless-error" role="alert">{error}</p>}
+
+        {generatedImage && (
+          <section className="faceless-result">
+            <div className="faceless-section-title"><span>06 / RESULT</span><strong>Your generated image</strong></div>
+            <img className="faceless-result-image" src={generatedImage} alt="Generated faceless product image" />
+            <div className="faceless-result-actions">
+              <a href={generatedImage} target="_blank" rel="noreferrer">VIEW IMAGE</a>
+              <button type="button" onClick={() => void downloadGeneratedImage()}>DOWNLOAD IMAGE</button>
+              <button type="button" onClick={() => void generateImage()} disabled={busy}>{busy ? 'GENERATING…' : 'REGENERATE IMAGE'}</button>
+            </div>
+          </section>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -561,23 +927,29 @@ function App() {
   const [tone, setTone] = useState('Warm & honest')
   const [result, setResult] = useState('')
   const [copied, setCopied] = useState(false)
-  const [facelessOwnCreative, setFacelessOwnCreative] = useState(false)
+  const [copyError, setCopyError] = useState('')
+  const [pandaVideoPlaying, setPandaVideoPlaying] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const updateMotionPreference = () => setReducedMotion(motionPreference.matches)
+    motionPreference.addEventListener('change', updateMotionPreference)
+    return () => motionPreference.removeEventListener('change', updateMotionPreference)
+  }, [])
 
   function openGenerator(generator: Generator) {
     setActiveGenerator(generator)
     setBrief('')
     setResult('')
     setCopied(false)
-    setFacelessOwnCreative(false)
+    setCopyError('')
   }
 
   function createPrompt() {
     if (!activeGenerator || !brief.trim()) return
-    const promptLead = activeGenerator.id === 'faceless' && facelessOwnCreative
-      ? 'Build a faceless visual story from this creative direction:'
-      : activeGenerator.promptLead
     setResult(
-      `${promptLead} ${brief.trim()}. Keep the tone ${tone.toLowerCase()}. Open with a compelling first-second hook, build a clear emotional or practical payoff, and close with a natural call to action. Use vivid, specific details and a polished, platform-native style.`,
+      `${activeGenerator.promptLead} ${brief.trim()}. Keep the tone ${tone.toLowerCase()}. Open with a compelling first-second hook, build a clear emotional or practical payoff, and close with a natural call to action. Use vivid, specific details and a polished, platform-native style.`,
     )
     setCopied(false)
   }
@@ -588,8 +960,38 @@ function App() {
     setCopied(true)
   }
 
+  async function copyHyunaMasterPrompt() {
+    try {
+      await navigator.clipboard.writeText(hyunaStoryMasterPrompt)
+      setCopied(true)
+      setCopyError('')
+    } catch {
+      setCopied(false)
+      setCopyError('Copy failed. Check browser clipboard permissions and try again.')
+    }
+  }
+
   return (
-    <main className={`app-shell ${activeGenerator?.id === 'ugc' ? 'ugc-shell' : ''} ${!activeGenerator ? 'home-shell' : ''}`}>
+    <main className={`app-shell ${activeGenerator?.id === 'ugc' ? 'ugc-shell' : ''} ${activeGenerator?.id === 'storyboard' ? 'storyboard-shell' : ''} ${!activeGenerator ? 'home-shell' : ''}`}>
+      {!activeGenerator && (
+        <div className={`home-wallpaper ${pandaVideoPlaying ? 'is-playing' : ''}`} aria-hidden="true">
+          <img src="/images/file_00000000c5e08211873d150d4db39bde.png" alt="" />
+          {!reducedMotion && (
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/images/file_00000000c5e08211873d150d4db39bde.png"
+              onPlaying={() => setPandaVideoPlaying(true)}
+              onError={() => setPandaVideoPlaying(false)}
+            >
+              <source src="/videos/hyuna-panda-background.mp4" type="video/mp4" />
+            </video>
+          )}
+        </div>
+      )}
       <header className="topbar">
         <button className="brand" onClick={() => setActiveGenerator(null)} aria-label="Go to home">
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
@@ -603,6 +1005,29 @@ function App() {
 
       {activeGenerator?.id === 'ugc' ? (
         <UGCWorkspace />
+      ) : activeGenerator?.id === 'storyboard' ? (
+        <StoryboardGenerator onBack={() => setActiveGenerator(null)} />
+      ) : activeGenerator?.id === 'faceless' ? (
+        <FacelessProductGenerator onBack={() => setActiveGenerator(null)} />
+      ) : activeGenerator?.id === 'drama' ? (
+        <section className="workspace drama-prompt-page">
+          <button className="back-link" onClick={() => setActiveGenerator(null)}><span aria-hidden="true">←</span> ALL GENERATORS</button>
+          <div className="workspace-heading">
+            <div className="workspace-heading-copy">
+              <div className="eyebrow"><span className="eyebrow-line" /> {activeGenerator.number} / {activeGenerator.tag}</div>
+              <h1>{activeGenerator.name}</h1>
+              <p>{activeGenerator.description}</p>
+            </div>
+          </div>
+          <section className="result-panel drama-master-panel">
+            <div className="panel-heading"><span>01</span><h2>HYUNA STORY — MASTER PROMPT</h2></div>
+            <pre className="drama-master-prompt">{hyunaStoryMasterPrompt}</pre>
+            <button className="copy-button drama-copy-button" onClick={copyHyunaMasterPrompt}>
+              {copied ? 'Copied!' : 'COPY PROMPT'} <span aria-hidden="true">{copied ? '✓' : '↗'}</span>
+            </button>
+            {copyError && <p className="drama-copy-error" role="alert">{copyError}</p>}
+          </section>
+        </section>
       ) : activeGenerator ? (
         <section className="workspace">
           <button className="back-link" onClick={() => setActiveGenerator(null)}><span aria-hidden="true">←</span> ALL GENERATORS</button>
@@ -612,23 +1037,10 @@ function App() {
               <h1>{activeGenerator.name}</h1>
               <p>{activeGenerator.description}</p>
             </div>
-            <div className={`workspace-panda workspace-panda-${activeGenerator.id}`} aria-hidden="true"><PandaArtwork variant={activeGenerator.id} label={`${activeGenerator.name} panda illustration`} /></div>
           </div>
           <div className="workspace-grid">
             <section className="editor-panel">
               <div className="panel-heading"><span>01</span><h2>Set the scene</h2></div>
-              {activeGenerator.id === 'faceless' && (
-                <label htmlFor="faceless-creative-mode">CREATIVE MODE</label>
-              )}
-              {activeGenerator.id === 'faceless' && (
-                <select id="faceless-creative-mode" value={facelessOwnCreative ? 'own' : 'standard'} onChange={(event) => {
-                  setFacelessOwnCreative(event.target.value === 'own')
-                  setResult('')
-                }}>
-                  <option value="standard">Faceless video</option>
-                  <option value="own">Own Creative direction</option>
-                </select>
-              )}
               <label htmlFor="brief">YOUR CREATIVE BRIEF</label>
               <textarea
                 id="brief"
@@ -665,13 +1077,13 @@ function App() {
         <>
           <section className="studio-hero">
             <div className="studio-hero-copy">
+              <div className="home-brand-label">HYUNA PROMPT GENERATOR</div>
               <div className="studio-kicker"><span /> YOUR CREATIVE PLAYGROUND</div>
               <h1>Dream it.<br /><em>Make it magic.</em></h1>
               <p>One little idea can become something wonderful. Choose a studio and let’s make it happen.</p>
               <a className="studio-hero-link" href="#generator-library">EXPLORE THE STUDIOS <span aria-hidden="true">↓</span></a>
               <div className="studio-hero-caption"><span className="studio-live-dot" /> FOUR CREATIVE STUDIOS <i /> MADE FOR BIG IDEAS</div>
             </div>
-            <div className="studio-panda-art"><span className="panda-art-glint glint-a">✦</span><span className="panda-art-glint glint-b">✧</span><PandaArtwork variant="hero" label="Original cinematic panda studio illustration" /><span className="panda-art-label"><i>✦</i> YOUR IDEAS HAVE A FRIEND</span></div>
           </section>
 
           <section className="studio-library" id="generator-library" aria-label="Creative generators">
@@ -679,9 +1091,8 @@ function App() {
             <div className="studio-card-grid">
               {generators.map((generator) => (
                 <button className={`studio-card studio-card-${generator.id}`} key={generator.id} onClick={() => openGenerator(generator)} aria-label={`Open ${generator.name}`}>
-                  <img src={`https://images.unsplash.com/${generator.image}?auto=format&fit=crop&w=1000&q=85`} alt="" loading="lazy" />
+                  <img className="studio-card-image" src={generatorPandaImages[generator.id]} alt="" loading="lazy" />
                   <span className="studio-card-wash" />
-                  <span className="studio-card-panda" aria-hidden="true"><PandaArtwork variant={generator.id} label={`${generator.name} panda illustration`} /></span>
                   <span className="studio-card-top"><span>{generator.number} <i /> {generator.tag}</span><span className="studio-card-arrow" aria-hidden="true">↗</span></span>
                   <span className="studio-card-bottom"><span className="studio-card-name">{generator.name}</span><span className="studio-card-description">{generator.description}</span></span>
                   <span className="studio-card-frame" />
