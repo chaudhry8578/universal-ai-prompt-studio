@@ -21,8 +21,34 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const username = normalizeUsername(process.env.BOOTSTRAP_ADMIN_USERNAME)
   const email = normalizeGmail(process.env.BOOTSTRAP_ADMIN_EMAIL)
   const password = process.env.BOOTSTRAP_ADMIN_PASSWORD
-  if (!bootstrapToken || bootstrapToken.length < 32 || !username || !email || !isValidPassword(password)) {
-    const error = new ConfigurationError('Configure ADMIN_BOOTSTRAP_TOKEN, BOOTSTRAP_ADMIN_USERNAME, BOOTSTRAP_ADMIN_EMAIL, and BOOTSTRAP_ADMIN_PASSWORD as server-side environment variables.')
+  const missingVariables = [
+    ['ADMIN_BOOTSTRAP_TOKEN', bootstrapToken],
+    ['BOOTSTRAP_ADMIN_USERNAME', process.env.BOOTSTRAP_ADMIN_USERNAME],
+    ['BOOTSTRAP_ADMIN_EMAIL', process.env.BOOTSTRAP_ADMIN_EMAIL],
+    ['BOOTSTRAP_ADMIN_PASSWORD', password],
+  ].filter(([, value]) => !value).map(([name]) => name)
+  if (missingVariables.length > 0) {
+    const error = new ConfigurationError(`Missing server-side environment variables: ${missingVariables.join(', ')}.`)
+    handleApiError(res, 'auth/bootstrap', error)
+    return
+  }
+  if (!bootstrapToken || bootstrapToken.length < 32) {
+    const error = new ConfigurationError('ADMIN_BOOTSTRAP_TOKEN must be at least 32 characters.')
+    handleApiError(res, 'auth/bootstrap', error)
+    return
+  }
+  if (!username) {
+    const error = new ConfigurationError('BOOTSTRAP_ADMIN_USERNAME must be 3–32 letters, digits, underscores, or hyphens.')
+    handleApiError(res, 'auth/bootstrap', error)
+    return
+  }
+  if (!email) {
+    const error = new ConfigurationError('BOOTSTRAP_ADMIN_EMAIL must be a valid Gmail address.')
+    handleApiError(res, 'auth/bootstrap', error)
+    return
+  }
+  if (!isValidPassword(password)) {
+    const error = new ConfigurationError('BOOTSTRAP_ADMIN_PASSWORD must be 12–128 characters.')
     handleApiError(res, 'auth/bootstrap', error)
     return
   }
