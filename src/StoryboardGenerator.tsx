@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, ReactNode } from 'react'
+import { requestAI } from './ai'
 
 type ReferenceSlot = 'product' | 'character' | 'outfit' | 'location'
 type ReferenceImage = { file: File; preview: string }
@@ -289,24 +290,16 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
   }
 
   async function requestJson(path: string, body: unknown) {
-    if (!storyboardApiBase) throw new Error('Configure VITE_UGC_AI_API_URL with your secure server-side AI backend to use this AI feature.')
-    const response = await fetch(`${storyboardApiBase}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!response.ok) throw new Error((await response.text()) || `AI service returned ${response.status}.`)
-    return response.json() as Promise<Record<string, unknown>>
-  }
-
-  async function requestContextWithReferences(path: string) {
-    if (!storyboardApiBase) throw new Error('Configure VITE_UGC_AI_API_URL with your secure server-side AI backend to use this AI feature.')
-    const form = new FormData()
-    form.append('context', JSON.stringify(context()))
-    Object.entries(refs).forEach(([slot, ref]) => { if (ref) form.append(slot, ref.file) })
-    const response = await fetch(`${storyboardApiBase}${path}`, { method: 'POST', body: form })
-    if (!response.ok) throw new Error((await response.text()) || `AI service returned ${response.status}.`)
-    return response.json() as Promise<Record<string, unknown>>
+    const taskByPath: Record<string, string> = {
+      '/storyboard/enhance-idea': 'storyboard-enhance-idea',
+      '/storyboard/choose-settings': 'storyboard-choose-settings',
+      '/storyboard/choose-audio': 'storyboard-choose-audio',
+      '/storyboard/plan': 'storyboard-plan',
+      '/storyboard/video-prompt': 'storyboard-video-prompt',
+    }
+    const task = taskByPath[path]
+    if (!task) throw new Error('Unsupported Storyboard AI operation.')
+    return requestAI(task, body)
   }
 
   async function requestWithReferences(path: string, prompt: string) {
@@ -334,7 +327,7 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
       if (typeof result.idea !== 'string' || !result.idea.trim()) throw new Error('The AI service response must include an idea string.')
       setIdea(result.idea)
       invalidate()
-      setNotice('Idea enhanced by the configured AI service.')
+      setNotice('Idea enhanced by gpt-5-mini.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Idea enhancement failed.')
     } finally { setBusy('') }
@@ -345,7 +338,12 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
     setError('')
     const requestRevision = revision.current
     try {
-      const result = await requestContextWithReferences('/storyboard/choose-settings')
+      const result = await requestJson('/storyboard/choose-settings', {
+        ...context(),
+        allowedModes: modes.map((item) => item.name).filter((name) => name !== 'AI Choose Mode'),
+        allowedStyles: styleOptions.map(([name]) => name).filter((name) => name !== 'AI Choose Style'),
+        allowedLocations: locations.filter((name) => name !== 'AI Choose Location'),
+      })
       if (revision.current !== requestRevision) return
       const choice = result.settings
       if (!choice || typeof choice !== 'object') throw new Error('AI service response must include a settings object.')
@@ -358,7 +356,7 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
       if (!explicitSettings.has('style') || style === 'AI Choose Style') setStyle(allowedStyle)
       if (!explicitSettings.has('location') || location === 'AI Choose Location') setLocation(allowedLocation)
       invalidate()
-      setNotice('AI filled missing creative settings. Your explicit choices and creative idea were preserved.')
+      setNotice('gpt-5-mini filled missing creative settings. Your explicit choices and creative idea were preserved.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'AI setting selection failed.')
     } finally { setBusy('') }
@@ -430,18 +428,8 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
     setBusy('plan')
     setError('')
     const requestRevision = revision.current
-    if (!storyboardApiBase) {
-      buildPlanDraft(draftDuration(audio === 'Custom Dialogue' ? customDialogue : ''))
-      setBusy('')
-      return
-    }
     try {
-      const form = new FormData()
-      form.append('context', JSON.stringify(context()))
-      Object.entries(refs).forEach(([slot, ref]) => { if (ref) form.append(slot, ref.file) })
-      const response = await fetch(`${storyboardApiBase}/storyboard/plan`, { method: 'POST', body: form })
-      if (!response.ok) throw new Error((await response.text()) || `AI service returned ${response.status}.`)
-      const result: unknown = await response.json()
+      const result: unknown = await requestJson('/storyboard/plan', context())
       if (revision.current !== requestRevision) return
       if (!result || typeof result !== 'object') {
         throw new Error('AI plan response must be an object containing durationSeconds and storyboards.')
@@ -496,6 +484,23 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Storyboard planning failed.')
     } finally { setBusy('') }
+  }
+
+  function generateLocalPlanDraft() {
+    if (!refs.product) {
+      setError('Upload the required product reference before creating a storyboard plan.')
+      return
+    }
+    if (audio === 'Custom Dialogue' && !customDialogue.trim()) {
+      setError('Enter your custom dialogue before creating the plan.')
+      return
+    }
+    if (audio === 'Custom Dialogue' && countWords(customDialogue) > 66) {
+      setError('The custom dialogue exceeds the 30-second maximum at a target of up to 22 words per 10-second storyboard. Shorten it before planning; no dialogue will be removed.')
+      return
+    }
+    setError('')
+    buildPlanDraft(draftDuration(audio === 'Custom Dialogue' ? customDialogue : ''))
   }
 
   async function generateStoryboardImage() {
@@ -557,29 +562,39 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
     return `Professional photorealistic vertical 9:16 commercial scene, storyboard ${current + 1} panel ${panelIndex + 1}. ${panel.description} Camera: ${panel.camera}. Action: ${panel.action}. Use @image1 as the authoritative exact product reference; preserve all visible branding, color, shape, proportions, packaging, and materials. ${refs.character ? 'Preserve the exact character reference identity.' : ''} ${refs.outfit ? 'Match the exact outfit reference.' : ''} ${refs.location ? 'Maintain the reference environment.' : selectedLocation}. Premium realistic light and color, natural anatomy, cohesive campaign continuity; no invented claims, text overlay, or watermark.`
   }
 
-  async function createVideoPrompt() {
+  async function createVideoPrompt(useLocalTemplate = false) {
     if (!story || duration === null || !validStoryboardPlan(storyboards, duration) || !storyboardApprovals[current]) {
       setError('Generate and approve the storyboard image before creating a video prompt.')
       return
     }
+    const requestRevision = revision.current
     setError('')
     let chosenAudio = audio
     let audioRationale = ''
     if (audio === 'AI Choose Audio') {
-      setBusy('audio')
-      try {
-        const result = await requestJson('/storyboard/choose-audio', context())
-        if (result.mode !== 'No Dialogue' && result.mode !== 'Character Dialogue' && result.mode !== 'Voiceover') {
-          throw new Error('AI audio recommendation must return No Dialogue, Character Dialogue, or Voiceover.')
+      if (useLocalTemplate) {
+        chosenAudio = story.panels.some((panel) => panel.dialogue.trim()) ? 'Character Dialogue' : 'No Dialogue'
+        audioRationale = 'AI audio selection was skipped for the local prompt.'
+      } else {
+        setBusy('audio')
+        try {
+          const result = await requestJson('/storyboard/choose-audio', context())
+          if (revision.current !== requestRevision) {
+            setBusy('')
+            return
+          }
+          if (result.mode !== 'No Dialogue' && result.mode !== 'Character Dialogue' && result.mode !== 'Voiceover') {
+            throw new Error('AI audio recommendation must return No Dialogue, Character Dialogue, or Voiceover.')
+          }
+          chosenAudio = result.mode
+          audioRationale = typeof result.rationale === 'string' ? result.rationale : ''
+        } catch (caught) {
+          setError(caught instanceof Error ? caught.message : 'AI audio recommendation failed.')
+          setBusy('')
+          return
         }
-        chosenAudio = result.mode
-        audioRationale = typeof result.rationale === 'string' ? result.rationale : ''
-      } catch (caught) {
-        setError(caught instanceof Error ? caught.message : 'AI audio recommendation failed.')
         setBusy('')
-        return
       }
-      setBusy('')
     }
     const timeline = story.panels.map((panel) =>
       `${panel.start.toFixed(1)}–${panel.end.toFixed(1)} seconds: ${panel.description} Camera: ${panel.camera}. Action: ${panel.action}${panel.dialogue ? ` Dialogue/voiceover: ${panel.dialogue}` : ''}`,
@@ -609,11 +624,33 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
       `LOCATION CONTINUITY LOCK: ${refs.location ? 'Maintain @image4 location continuity.' : `Maintain one coherent ${selectedLocation} environment.`}`,
       'Never claim the video service rendered an exact duration unless its output was measured. If separate approved scene images are available, use them in order. Otherwise use the approved storyboard as reference only and render/assemble shots separately when the service cannot accept multi-shot instructions.',
     ].join('\n\n')
-    setVideoPrompts((previous) => ({ ...previous, [current]: prompt }))
-    setError('')
-    setNotice(audioRationale
-      ? `Video prompt assembled locally. AI audio recommendation: ${chosenAudio}. ${audioRationale} No video was rendered.`
-      : 'Video prompt assembled locally from the approved plan and scene images; no video was rendered.')
+    if (useLocalTemplate) {
+      setVideoPrompts((previous) => ({ ...previous, [current]: prompt }))
+      setNotice(`Local video prompt — not AI-generated. ${audioRationale || ''} No video was rendered.`)
+      return
+    }
+    setBusy('video-prompt')
+    try {
+      const result = await requestJson('/storyboard/video-prompt', { ...context(), draftPrompt: prompt })
+      if (revision.current !== requestRevision) return
+      if (typeof result.prompt !== 'string' || !result.prompt.trim()) {
+        throw new Error('AI video-prompt response did not contain a "prompt" string.')
+      }
+      const generatedPrompt = result.prompt
+      const requiredSections = ['VISUAL:', 'ACTION:', 'CAMERA:', 'DIALOGUE / VOICEOVER:', 'AUDIO:', 'TIMELINE:']
+      if (!requiredSections.every((section) => generatedPrompt.includes(section))) {
+        throw new Error('AI video prompt omitted one or more required direction sections. Try again or use the local prompt.')
+      }
+      if (audio === 'Custom Dialogue' && current === 0 && !generatedPrompt.includes(customDialogue.trim())) {
+        throw new Error('The AI video prompt did not preserve the complete custom dialogue. Use the local prompt or try again.')
+      }
+      setVideoPrompts((previous) => ({ ...previous, [current]: generatedPrompt }))
+      setNotice(`Video prompt generated by gpt-5-mini. ${audioRationale ? `AI audio recommendation: ${chosenAudio}. ${audioRationale} ` : ''}No video was rendered.`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Video prompt generation failed.')
+    } finally {
+      setBusy('')
+    }
   }
 
   async function copyText(text: string, id: string) {
@@ -649,7 +686,7 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
       {section('01', 'YOUR CREATIVE IDEA (OPTIONAL)', <>
         <textarea className="story-textarea" value={idea} onChange={(event) => { setIdea(event.target.value); invalidate() }} placeholder="Describe your commercial idea here... Or leave this blank and let AI create everything for you." rows={3} aria-label="Your creative idea (optional)" />
         <div className="story-actions"><button className="story-primary" onClick={enhanceIdea} disabled={!!busy}>{busy === 'enhance' ? 'ENHANCING…' : 'ENHANCE MY IDEA'}</button><button className="story-secondary" onClick={chooseEverything} disabled={!!busy}>{busy === 'choose' ? 'CHOOSING…' : 'AI CHOOSE EVERYTHING'}</button></div>
-        <p className="story-help">{storyboardApiBase ? 'AI operations use the configured backend. User choices remain in priority over AI recommendations.' : 'AI unavailable: configure VITE_UGC_AI_API_URL with the secure backend. No AI enhancement or analysis is simulated.'}</p>
+        <p className="story-help">AI text uses the secure /api/generate endpoint with gpt-5-mini. Uploaded reference images stay in the browser for preview and are not analyzed by AI.</p>
       </>)}
 
       {section('02', 'REFERENCE IMAGE UPLOADS', <>
@@ -684,8 +721,8 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
       </>)}
 
       {section('07', 'AI STORYBOARD PLAN', <>
-        <div className="story-actions"><button className="story-primary" onClick={generatePlan} disabled={!!busy}>{busy === 'plan' ? 'ANALYZING & PLANNING…' : 'GENERATE AI STORYBOARD PLAN'}</button>{story && <button className={`story-secondary ${planApprovals[current] ? 'is-approved' : ''}`} disabled={!isValidTimeline(story.panels)} onClick={() => { setPlanApprovals((previous) => ({ ...previous, [current]: true })); setNotice('Plan approved. Storyboard image generation is now available.') }}>{planApprovals[current] ? 'PLAN APPROVED ✓' : 'APPROVE STORYBOARD PLAN'}</button>}</div>
-        <p className="story-help">{storyboardApiBase ? 'AI analyzes the submitted idea and reference images, then selects the shortest suitable plan: 10, 20, or 30 seconds maximum.' : 'AI is not configured. Plan generation produces a clearly labeled local estimate and structured draft; it does not analyze uploaded reference images.'}</p>
+        <div className="story-actions"><button className="story-primary" onClick={generatePlan} disabled={!!busy}>{busy === 'plan' ? 'GENERATING AI PLAN…' : 'GENERATE AI STORYBOARD PLAN'}</button><button className="story-secondary" onClick={generateLocalPlanDraft} disabled={!!busy}>USE LOCAL DRAFT · NOT AI</button>{story && <button className={`story-secondary ${planApprovals[current] ? 'is-approved' : ''}`} disabled={!isValidTimeline(story.panels)} onClick={() => { setPlanApprovals((previous) => ({ ...previous, [current]: true })); setNotice('Plan approved. Storyboard image generation is now available.') }}>{planApprovals[current] ? 'PLAN APPROVED ✓' : 'APPROVE STORYBOARD PLAN'}</button>}</div>
+        <p className="story-help">The AI plan uses your text idea and settings only; uploaded reference images are not analyzed. If AI is unavailable, use the clearly labeled local draft.</p>
         {storyboards.length > 0 && duration !== null && <>
           <p className="story-notice"><strong>SELECTED DURATION · {duration} SECONDS</strong><br />{storyboards.length} connected storyboard{storyboards.length === 1 ? '' : 's'} · {storyboards.length * 6} panels · exactly {duration} seconds planned.</p>
           {cardGroup(storyboards.map((item, index) => ({ name: `Storyboard ${index + 1}`, detail: `${index * 10}–${(index + 1) * 10} seconds · ${item.title}` })), story ? `Storyboard ${current + 1}` : '', (value) => { const index = Number(value.split(' ')[1]) - 1; if (index < storyboards.length) { setCurrent(index); setImagePrompt('') } })}
@@ -721,7 +758,7 @@ function StoryboardGenerator({ onBack }: { onBack: () => void }) {
       </details>}
 
       {section('10', 'VIDEO PROMPT GENERATION', <>
-        <button className="story-primary" onClick={createVideoPrompt} disabled={!story || !!busy || !storyboardApprovals[current]}>{busy === 'audio' ? 'CHOOSING AUDIO…' : 'GENERATE VIDEO PROMPT'}</button>
+        <div className="story-actions"><button className="story-primary" onClick={() => void createVideoPrompt()} disabled={!story || !!busy || !storyboardApprovals[current]}>{busy === 'audio' ? 'CHOOSING AUDIO…' : busy === 'video-prompt' ? 'GENERATING AI PROMPT…' : 'GENERATE AI VIDEO PROMPT'}</button><button className="story-secondary" onClick={() => void createVideoPrompt(true)} disabled={!story || !!busy || !storyboardApprovals[current]}>USE LOCAL PROMPT · NOT AI</button></div>
         {videoPrompts[current] && <><textarea className="story-textarea story-video-output" value={videoPrompts[current]} readOnly rows={20} aria-label="Generated video prompt" /><div className="story-actions"><button className="story-secondary" onClick={() => void copyText(videoPrompts[current], 'video')}>{copied === 'video' ? 'COPIED ✓' : 'COPY VIDEO PROMPT'}</button>{current + 1 < storyCount && <button className="story-primary" onClick={() => { setCurrent(current + 1); setImagePrompt('') }} disabled={!videoPrompts[current]}>GENERATE NEXT STORYBOARD</button>}</div><p className="story-help">One storyboard is a 10-second planned segment. Rendering length depends on the connected video service; request native 10 seconds or trim/edit to duration.</p></>}
       </>)}
 
