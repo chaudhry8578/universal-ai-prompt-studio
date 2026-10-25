@@ -1,22 +1,22 @@
-import type { ApiRequest, ApiResponse } from '../server/http'
-import authBootstrap from '../server/api/auth/bootstrap'
-import authEnrollEmail from '../server/api/auth/enroll-email'
-import authForgotPassword from '../server/api/auth/forgot-password'
-import authLogin from '../server/api/auth/login'
-import authLogout from '../server/api/auth/logout'
-import authMe from '../server/api/auth/me'
-import authRegister from '../server/api/auth/register'
-import authResendVerification from '../server/api/auth/resend-verification'
-import authResetPassword from '../server/api/auth/reset-password'
-import authUsage from '../server/api/auth/usage'
-import authVerifyEmail from '../server/api/auth/verify-email'
-import adminAccessCodes from '../server/api/admin/access-codes'
-import adminAccessCode from '../server/api/admin/access-codes/[id]'
-import adminUsage from '../server/api/admin/usage'
-import adminUsers from '../server/api/admin/users'
-import adminUser from '../server/api/admin/users/[id]'
-import adminUserResetPassword from '../server/api/admin/users/[id]/reset-password'
-import generate from '../server/api/generate'
+import type { ApiRequest, ApiResponse } from './http'
+import authBootstrap from './api/auth/bootstrap'
+import authEnrollEmail from './api/auth/enroll-email'
+import authForgotPassword from './api/auth/forgot-password'
+import authLogin from './api/auth/login'
+import authLogout from './api/auth/logout'
+import authMe from './api/auth/me'
+import authRegister from './api/auth/register'
+import authResendVerification from './api/auth/resend-verification'
+import authResetPassword from './api/auth/reset-password'
+import authUsage from './api/auth/usage'
+import authVerifyEmail from './api/auth/verify-email'
+import adminAccessCodes from './api/admin/access-codes'
+import adminAccessCode from './api/admin/access-codes/[id]'
+import adminUsage from './api/admin/usage'
+import adminUsers from './api/admin/users'
+import adminUser from './api/admin/users/[id]'
+import adminUserResetPassword from './api/admin/users/[id]/reset-password'
+import generate from './api/generate'
 
 type RouteHandler = (req: ApiRequest, res: ApiResponse) => Promise<void>
 
@@ -42,7 +42,7 @@ function withId(req: ApiRequest, id: string): ApiRequest {
   return { ...req, query: { ...req.query, id } }
 }
 
-export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
+export default async function routeApiRequest(req: ApiRequest, res: ApiResponse): Promise<void> {
   const pathname = new URL(req.url ?? '/', 'https://vercel.invalid').pathname.replace(/\/+$/, '') || '/'
   const staticRoute = staticRoutes[pathname]
   if (staticRoute) {

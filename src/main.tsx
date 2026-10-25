@@ -6,6 +6,7 @@ import AdminDashboard from './AdminDashboard'
 import AuthPage, { isAuthUser } from './AuthPage'
 import type { AuthUser, AuthView, Credits } from './AuthPage'
 import { requestAI } from './ai'
+import { readJsonResponse } from './api-response'
 import './styles.css'
 
 type Generator = {
@@ -977,7 +978,7 @@ function App() {
       try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' })
         if (response.status === 401) return
-        const payload: unknown = await response.json()
+        const payload = await readJsonResponse(response, 'Authentication API')
         if (!response.ok) {
           const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
             ? payload.error
@@ -1016,7 +1017,7 @@ function App() {
     try {
       const response = await fetch('/api/auth/usage', { credentials: 'same-origin' })
       if (!response.ok) throw new Error(`Usage endpoint returned ${response.status}.`)
-      const payload: unknown = await response.json()
+      const payload = await readJsonResponse(response, 'Usage API')
       if (
         typeof payload !== 'object' || payload === null ||
         !('date' in payload) || typeof payload.date !== 'string' ||
@@ -1067,7 +1068,7 @@ function App() {
         setAuthView('login')
         return
       }
-      const payload: unknown = await response.json()
+      const payload = await readJsonResponse(response, 'Authentication API')
       if (!response.ok) {
         const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
           ? payload.error
@@ -1096,7 +1097,7 @@ function App() {
         credentials: 'same-origin',
         body: JSON.stringify({ email, password }),
       })
-      const payload: unknown = await response.json()
+      const payload = await readJsonResponse(response, 'Login API')
       if (!response.ok) {
         const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
           ? payload.error
@@ -1122,7 +1123,7 @@ function App() {
         method: 'POST',
         credentials: 'same-origin',
       })
-      const payload: unknown = await response.json()
+      const payload = await readJsonResponse(response, 'Authentication API')
       if (!response.ok) {
         const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
           ? payload.error

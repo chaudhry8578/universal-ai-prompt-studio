@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { readJsonResponse } from './api-response'
 
 type AuthView = 'login' | 'register' | 'forgot' | 'reset' | 'enroll' | 'verify' | 'profile' | 'workspace'
 type AuthUser = { id: string; username: string; email: string; role: 'admin' | 'user' }
@@ -33,12 +34,7 @@ async function postAuth(path: string, body: unknown): Promise<string> {
     credentials: 'same-origin',
     body: JSON.stringify(body),
   })
-  let payload: unknown
-  try {
-    payload = await response.json()
-  } catch {
-    throw new Error(`The authentication service returned an invalid response (${response.status}).`)
-  }
+  const payload = await readJsonResponse(response, 'Authentication API')
   if (!response.ok) {
     const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
       ? payload.error

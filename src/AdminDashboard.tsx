@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { readJsonResponse } from './api-response'
 
 type AdminUser = {
   id: string
@@ -24,12 +25,7 @@ type UsageUser = { id: string; successful_generations: number }
 
 async function requestJson(path: string, options?: RequestInit): Promise<Record<string, unknown>> {
   const response = await fetch(path, { credentials: 'same-origin', ...options })
-  let payload: unknown
-  try {
-    payload = await response.json()
-  } catch {
-    throw new Error(`Admin API returned an invalid response (${response.status}).`)
-  }
+  const payload = await readJsonResponse(response, 'Admin API')
   if (!response.ok) {
     const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
       ? payload.error
