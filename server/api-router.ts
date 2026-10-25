@@ -38,12 +38,27 @@ const staticRoutes: Record<string, RouteHandler> = {
   '/api/generate': generate,
 }
 
+const retiredAuthRoutes = new Set([
+  '/api/auth/register',
+  '/api/auth/enroll-email',
+  '/api/auth/resend-verification',
+  '/api/auth/verify-email',
+  '/api/admin/access-codes',
+])
+
 function withId(req: ApiRequest, id: string): ApiRequest {
   return { ...req, query: { ...req.query, id } }
 }
 
 export default async function routeApiRequest(req: ApiRequest, res: ApiResponse): Promise<void> {
   const pathname = new URL(req.url ?? '/', 'https://vercel.invalid').pathname.replace(/\/+$/, '') || '/'
+  if (
+    retiredAuthRoutes.has(pathname) ||
+    /^\/api\/admin\/access-codes\/[^/]+$/.test(pathname)
+  ) {
+    res.status(410).json({ error: 'This registration flow is no longer available. Contact an administrator.' })
+    return
+  }
   const staticRoute = staticRoutes[pathname]
   if (staticRoute) {
     await staticRoute(req, res)

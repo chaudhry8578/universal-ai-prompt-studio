@@ -31,12 +31,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     const result = await getDatabase().query(
-      `SELECT users.id, users.username, users.role, users.is_active, users.email_verified_at,
+      `SELECT users.id, users.email, users.role, users.is_active,
               COALESCE(daily_usage.successful_generations, 0)::integer AS successful_generations
        FROM app_users AS users
        LEFT JOIN daily_usage
          ON daily_usage.user_id = users.id AND daily_usage.usage_date = $1::date
-       ORDER BY users.username`,
+       ORDER BY users.email NULLS LAST`,
       [usageDate],
     )
     res.status(200).json({ date: usageDate, users: result.rows })

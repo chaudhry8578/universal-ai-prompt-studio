@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, hashPassword, isAdmin, isValidPassword, normalizeGmail, normalizeUsername } from '../../auth.js'
+import { getAuthenticatedUser, generateInternalUsername, hashPassword, isAdmin, isValidPassword, normalizeGmail } from '../../auth.js'
 import { getDatabase } from '../../database.js'
 import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http.js'
 
@@ -27,7 +27,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const pool = getDatabase()
     if (req.method === 'GET') {
       const users = await pool.query(
-        `SELECT id, username, email, email_verified_at, role, is_active, admin_disabled_at, created_at, last_login_at
+        `SELECT id, email, role, is_active, admin_disabled_at, created_at, last_login_at
          FROM app_users
          ORDER BY created_at ASC`,
       )
@@ -36,14 +36,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     if (!isJsonObject(req.body)) {
-      res.status(400).json({ error: 'A username and password are required.' })
+      res.status(400).json({ error: 'A Gmail address and password are required.' })
       return
     }
-    const username = normalizeUsername(req.body.username)
     const email = normalizeGmail(req.body.email)
     const password = req.body.password
-    if (!username || !email || !isValidPassword(password)) {
-      res.status(400).json({ error: 'Use a 3–32 character username, a Gmail address, and a 12–128 character password.' })
+    if (!email || !isValidPassword(password)) {
+      res.status(400).json({ error: 'Use a valid Gmail address and a 12–128 character password.' })
       return
     }
 
@@ -51,11 +50,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
-      const result = await client.query<{ id: string; username: string; email: string; role: string; is_active: boolean }>(
+      const result = await client.query<{ id: string; email: string; role: string; is_active: boolean }>(
         `INSERT INTO app_users (username, password_hash, role, is_active, email, email_verified_at)
          VALUES ($1, $2, 'user', true, $3, now())
-         RETURNING id, username, email, role, is_active`,
-        [username, passwordHash, email.email],
+         RETURNING id, email, role, is_active`,
+        [generateInternalUsername(), passwordHash, email.email],
       )
       await client.query('COMMIT')
       res.status(201).json({ user: result.rows[0], message: 'Account created and activated.' })
@@ -71,7 +70,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return
     }
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
-      res.status(409).json({ error: 'That username or Gmail address is already associated with an account.' })
+      res.status(409).json({ error: 'An account already exists for this Gmail address.' })
       return
     }
     handleApiError(res, 'admin/users', error)

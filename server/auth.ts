@@ -37,6 +37,10 @@ export function normalizeUsername(value: unknown): string | undefined {
   return value.toLowerCase()
 }
 
+export function generateInternalUsername(): string {
+  return `acct_${randomBytes(13).toString('hex')}`
+}
+
 export function isValidPassword(value: unknown): value is string {
   return typeof value === 'string' && value.length >= 12 && value.length <= 128
 }
@@ -189,13 +193,12 @@ export async function getAuthenticatedUser(req: ApiRequest): Promise<Authenticat
 
   const tokenHash = createHash('sha256').update(token).digest('hex')
   const result = await getDatabase().query<AuthenticatedUser>(
-    `SELECT users.id, users.username, users.role, users.email
+    `SELECT users.id, users.role, users.email
      FROM auth_sessions
      JOIN app_users AS users ON users.id = auth_sessions.user_id
      WHERE auth_sessions.token_hash = $1
        AND auth_sessions.expires_at > now()
-       AND users.is_active = true
-       AND users.email_verified_at IS NOT NULL`,
+       AND users.is_active = true`,
     [tokenHash],
   )
   return result.rows[0]

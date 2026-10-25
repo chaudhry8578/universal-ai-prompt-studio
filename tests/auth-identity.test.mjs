@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
-import { createOpaqueToken, hashOpaqueToken, normalizeGmail } from '../server/identity.ts'
-import { isSameOrigin } from '../server/http.ts'
+import { after, test } from 'node:test'
+import { createServer } from 'vite'
+
+const vite = await createServer({
+  appType: 'custom',
+  configFile: false,
+  server: { middlewareMode: true },
+})
+const { createOpaqueToken, hashOpaqueToken, normalizeGmail } = await vite.ssrLoadModule('/server/identity.ts')
+const { generateInternalUsername, hashPassword, verifyPassword } = await vite.ssrLoadModule('/server/auth.ts')
+const { isSameOrigin } = await vite.ssrLoadModule('/server/http.ts')
+after(() => vite.close())
 
 test('Gmail addresses are normalized and dot/plus aliases share one identity', () => {
   const first = normalizeGmail('First.Last+studio@gmail.com')
@@ -24,6 +33,20 @@ test('opaque tokens have 256 bits of URL-safe randomness and are one-way hashed'
   assert.notEqual(first, second)
   assert.match(hashOpaqueToken(first), /^[a-f0-9]{64}$/)
   assert.notEqual(hashOpaqueToken(first), first)
+})
+
+test('internally generated usernames are database-compatible and passwords are only stored as scrypt hashes', async () => {
+  const firstUsername = generateInternalUsername()
+  const secondUsername = generateInternalUsername()
+  assert.match(firstUsername, /^acct_[a-f0-9]{26}$/)
+  assert.notEqual(firstUsername, secondUsername)
+
+  const password = 'example-password-value'
+  const passwordHash = await hashPassword(password)
+  assert.match(passwordHash, /^scrypt\$16384\$8\$1\$/)
+  assert.notEqual(passwordHash, password)
+  assert.equal(await verifyPassword(password, passwordHash), true)
+  assert.equal(await verifyPassword('incorrect-password-value', passwordHash), false)
 })
 
 test('state-changing browser requests require a matching Origin and host', () => {

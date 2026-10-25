@@ -44,11 +44,16 @@ test('Vercel handler dispatches rewritten API paths through the shared router', 
   assert.match(res.result.headers['content-type'], /^application\/json/)
 })
 
-test('account creation and registration code APIs reject unauthenticated requests', async () => {
+test('account creation requires authentication and retired registration APIs are disabled', async () => {
   const requests = [
-    { path: 'admin/users', method: 'POST', body: { username: 'new_user', email: 'newuser@gmail.com', password: 'test-password-value' }, status: 401 },
-    { path: 'admin/access-codes', method: 'POST', body: { expiresInDays: null }, status: 401 },
-    { path: 'auth/register', method: 'POST', body: { username: 'new_user', email: 'newuser@gmail.com', password: 'test-password-value', accessCode: 'UAS-test' }, status: 401 },
+    { path: 'admin/users', method: 'POST', body: { email: 'newuser@gmail.com', password: 'test-password-value' }, status: 401, error: 'Authentication required.' },
+    { path: 'admin/access-codes', method: 'POST', body: { expiresInDays: null }, status: 410, error: 'This registration flow is no longer available. Contact an administrator.' },
+    { path: 'admin/access-codes', method: 'GET', status: 410, error: 'This registration flow is no longer available. Contact an administrator.' },
+    { path: 'admin/access-codes/00000000-0000-4000-8000-000000000000', method: 'PATCH', status: 410, error: 'This registration flow is no longer available. Contact an administrator.' },
+    { path: 'auth/register', method: 'POST', body: { email: 'newuser@gmail.com', password: 'test-password-value', accessCode: 'UAS-test' }, status: 410, error: 'This registration flow is no longer available. Contact an administrator.' },
+    { path: 'auth/enroll-email', method: 'POST', status: 410, error: 'This registration flow is no longer available. Contact an administrator.' },
+    { path: 'auth/verify-email', method: 'POST', status: 410, error: 'This registration flow is no longer available. Contact an administrator.' },
+    { path: 'auth/resend-verification', method: 'POST', status: 410, error: 'This registration flow is no longer available. Contact an administrator.' },
   ]
   for (const request of requests) {
     const res = createResponse()
@@ -62,14 +67,13 @@ test('account creation and registration code APIs reject unauthenticated request
       res,
     )
     assert.equal(res.result.statusCode, request.status, request.path)
-    assert.equal(res.result.body.error, 'Authentication required.', request.path)
+    assert.equal(res.result.body.error, request.error, request.path)
   }
 })
 
 test('bootstrap accepts a bodyless POST format while preserving bearer and body checks', async () => {
   const config = {
     ADMIN_BOOTSTRAP_TOKEN: 'test-bootstrap-token-with-at-least-32-chars',
-    BOOTSTRAP_ADMIN_USERNAME: 'bootstrap_admin',
     BOOTSTRAP_ADMIN_EMAIL: 'admin@gmail.com',
     BOOTSTRAP_ADMIN_PASSWORD: 'test-bootstrap-password',
   }
@@ -197,7 +201,6 @@ test('Admin activation does not expose a platform response body for HTTP 415', a
 test('bootstrap identifies missing or invalid configuration without exposing values', async () => {
   const config = {
     ADMIN_BOOTSTRAP_TOKEN: 'test-bootstrap-token-with-at-least-32-chars',
-    BOOTSTRAP_ADMIN_USERNAME: 'bootstrap_admin',
     BOOTSTRAP_ADMIN_EMAIL: 'not-a-gmail-address',
     BOOTSTRAP_ADMIN_PASSWORD: 'test-bootstrap-password',
   }
@@ -221,7 +224,7 @@ test('bootstrap identifies missing or invalid configuration without exposing val
     const missing = await makeRequest()
     assert.equal(missing.statusCode, 503)
     assert.deepEqual(missing.body, {
-      error: 'Missing server-side environment variables: ADMIN_BOOTSTRAP_TOKEN, BOOTSTRAP_ADMIN_USERNAME, BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD.',
+      error: 'Missing server-side environment variables: ADMIN_BOOTSTRAP_TOKEN, BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD.',
     })
 
     Object.assign(process.env, config)

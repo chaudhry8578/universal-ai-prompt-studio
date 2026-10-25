@@ -964,7 +964,6 @@ function App() {
   const [authError, setAuthError] = useState('')
   const [credits, setCredits] = useState<Credits | null>(null)
   const [resetToken, setResetToken] = useState('')
-  const [verifyToken, setVerifyToken] = useState('')
   const [loggingOut, setLoggingOut] = useState(false)
   const [brief, setBrief] = useState('')
   const [tone, setTone] = useState('Warm & honest')
@@ -1010,8 +1009,8 @@ function App() {
     const verification = params.get('verify')
     if (!reset && !verification) return
     setResetToken(reset ?? '')
-    setVerifyToken(verification ?? '')
-    setAuthView(reset ? 'reset' : 'verify')
+    setAuthView(reset ? 'reset' : 'login')
+    if (verification) setAuthError('Email verification links are no longer supported. Contact an administrator.')
     window.history.replaceState({}, '', window.location.pathname)
   }, [])
 
@@ -1187,7 +1186,6 @@ function App() {
         onLogout={() => void logout()}
         onNavigate={(view) => { setAuthError(''); setAuthView(view === 'workspace' ? null : view) }}
         resetToken={resetToken}
-        verifyToken={verifyToken}
       />
     )
   }

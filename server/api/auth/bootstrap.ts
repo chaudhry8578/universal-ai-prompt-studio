@@ -1,4 +1,4 @@
-import { hashPassword, getBootstrapToken, matchesSecret, normalizeGmail, normalizeUsername, isValidPassword } from '../../auth.js'
+import { hashPassword, getBootstrapToken, matchesSecret, normalizeGmail, isValidPassword, generateInternalUsername } from '../../auth.js'
 import { getDatabase, ConfigurationError } from '../../database.js'
 import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http.js'
 
@@ -18,12 +18,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   const bootstrapToken = process.env.ADMIN_BOOTSTRAP_TOKEN
-  const username = normalizeUsername(process.env.BOOTSTRAP_ADMIN_USERNAME)
   const email = normalizeGmail(process.env.BOOTSTRAP_ADMIN_EMAIL)
   const password = process.env.BOOTSTRAP_ADMIN_PASSWORD
   const missingVariables = [
     ['ADMIN_BOOTSTRAP_TOKEN', bootstrapToken],
-    ['BOOTSTRAP_ADMIN_USERNAME', process.env.BOOTSTRAP_ADMIN_USERNAME],
     ['BOOTSTRAP_ADMIN_EMAIL', process.env.BOOTSTRAP_ADMIN_EMAIL],
     ['BOOTSTRAP_ADMIN_PASSWORD', password],
   ].filter(([, value]) => !value).map(([name]) => name)
@@ -34,11 +32,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
   if (!bootstrapToken || bootstrapToken.length < 32) {
     const error = new ConfigurationError('ADMIN_BOOTSTRAP_TOKEN must be at least 32 characters.')
-    handleApiError(res, 'auth/bootstrap', error)
-    return
-  }
-  if (!username) {
-    const error = new ConfigurationError('BOOTSTRAP_ADMIN_USERNAME must be 3–32 letters, digits, underscores, or hyphens.')
     handleApiError(res, 'auth/bootstrap', error)
     return
   }
@@ -84,7 +77,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       await client.query(
         `INSERT INTO app_users (username, password_hash, role, is_active, email, email_verified_at)
          VALUES ($1, $2, 'admin', true, $3, now())`,
-        [username, passwordHash, email.email],
+        [generateInternalUsername(), passwordHash, email.email],
       )
       await client.query(
         'UPDATE app_bootstrap SET completed_at = now() WHERE singleton = true',
@@ -103,7 +96,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return
     }
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
-      res.status(409).json({ error: 'An account already uses the configured bootstrap username or Gmail address.' })
+      res.status(409).json({ error: 'An account already exists for the configured Gmail address.' })
       return
     }
     handleApiError(res, 'auth/bootstrap', error)

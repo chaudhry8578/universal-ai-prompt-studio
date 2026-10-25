@@ -22,7 +22,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return
   }
   if (!isJsonObject(req.body)) {
-    res.status(400).json({ error: 'A username and password are required.' })
+    res.status(400).json({ error: 'A Gmail address and password are required.' })
     return
   }
 
@@ -43,14 +43,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const pool = getDatabase()
     const result = await pool.query<{
       id: string
-      username: string
       email: string
       password_hash: string
       role: 'admin' | 'user'
     }>(
-      `SELECT id, username, email, password_hash, role
+      `SELECT id, email, password_hash, role
        FROM app_users
-       WHERE email_identity = $1 AND is_active = true AND email_verified_at IS NOT NULL`,
+       WHERE email_identity = $1 AND is_active = true`,
       [email.identity],
     )
     const account = result.rows[0]
@@ -68,15 +67,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const currentAccount = await client.query<{
         password_hash: string
         is_active: boolean
-        email_verified_at: Date | null
       }>(
-        'SELECT password_hash, is_active, email_verified_at FROM app_users WHERE id = $1 FOR UPDATE',
+        'SELECT password_hash, is_active FROM app_users WHERE id = $1 FOR UPDATE',
         [account.id],
       )
       if (
         currentAccount.rows.length === 0 ||
         !currentAccount.rows[0].is_active ||
-        !currentAccount.rows[0].email_verified_at ||
         currentAccount.rows[0].password_hash !== account.password_hash
       ) {
         await client.query('ROLLBACK')
@@ -95,7 +92,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     await clearLoginAttempts(req)
     setSessionCookie(res, token)
     res.status(200).json({
-      user: { id: account.id, username: account.username, email: account.email, role: account.role },
+      user: { id: account.id, email: account.email, role: account.role },
     })
   } catch (error) {
     handleApiError(res, 'auth/login', error)

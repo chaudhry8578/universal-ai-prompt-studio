@@ -14,7 +14,6 @@ export type ApiResponse = {
 
 export type AuthenticatedUser = {
   id: string
-  username: string
   role: 'admin' | 'user'
   email: string
 }

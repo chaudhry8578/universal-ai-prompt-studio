@@ -40,8 +40,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const client = await pool.connect()
       try {
         await client.query('BEGIN')
-        const existing = await client.query<{ email_verified_at: Date | null }>(
-          `SELECT email_verified_at FROM app_users WHERE id = $1 AND role = 'user' FOR UPDATE`,
+        const existing = await client.query(
+          `SELECT id FROM app_users WHERE id = $1 AND role = 'user' FOR UPDATE`,
           [userId],
         )
         if (existing.rows.length === 0) {
@@ -49,17 +49,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           res.status(404).json({ error: 'User account not found.' })
           return
         }
-        if (body.is_active && !existing.rows[0].email_verified_at) {
-          await client.query('ROLLBACK')
-          res.status(409).json({ error: 'Verify the user’s email before activating the account.' })
-          return
-        }
-        const updated = await client.query<{ id: string; username: string; role: string; is_active: boolean }>(
+        const updated = await client.query<{ id: string; role: string; is_active: boolean }>(
           `UPDATE app_users
            SET is_active = $1,
                admin_disabled_at = CASE WHEN $1 THEN NULL ELSE now() END
            WHERE id = $2 AND role = 'user'
-           RETURNING id, username, role, is_active`,
+           RETURNING id, role, is_active`,
           [body.is_active, userId],
         )
         if (updated.rows.length === 0) {

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { readJsonResponse } from './api-response'
 
-type AuthView = 'login' | 'forgot' | 'reset' | 'enroll' | 'verify' | 'profile' | 'workspace'
-type AuthUser = { id: string; username: string; email: string; role: 'admin' | 'user' }
+type AuthView = 'login' | 'forgot' | 'reset' | 'profile' | 'workspace'
+type AuthUser = { id: string; email: string; role: 'admin' | 'user' }
 type Credits = { date: string; limit: number; used: number; remaining: number }
 
 type AuthPageProps = {
@@ -16,15 +16,13 @@ type AuthPageProps = {
   user?: AuthUser
   credits?: Credits | null
   resetToken?: string
-  verifyToken?: string
-  verificationMessage?: string
 }
 
 function isAuthUser(value: unknown): value is AuthUser {
   if (typeof value !== 'object' || value === null) return false
   const user = value as Record<string, unknown>
-  return typeof user.id === 'string' && typeof user.username === 'string' &&
-    typeof user.email === 'string' && (user.role === 'admin' || user.role === 'user')
+  return typeof user.id === 'string' && typeof user.email === 'string' &&
+    (user.role === 'admin' || user.role === 'user')
 }
 
 async function postAuth(path: string, body: unknown): Promise<string> {
@@ -56,21 +54,16 @@ export default function AuthPage({
   user,
   credits,
   resetToken = '',
-  verifyToken = '',
-  verificationMessage,
 }: AuthPageProps) {
   const [email, setEmail] = useState('')
-  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState(verificationMessage ?? '')
+  const [message, setMessage] = useState('')
   const [formError, setFormError] = useState('')
   const title = view === 'login' ? 'Welcome back'
     : view === 'forgot' ? 'Reset your password'
       : view === 'reset' ? 'Choose a new password'
-        : view === 'enroll' ? 'Verify your existing account'
-          : view === 'verify' ? 'Confirm your email'
-          : 'Your profile'
+        : 'Your profile'
 
   async function submit(event: FormEvent<HTMLFormElement>, action: () => Promise<void>) {
     event.preventDefault()
@@ -99,10 +92,6 @@ export default function AuthPage({
     setPassword('')
   }
 
-  async function submitEnroll() {
-    setMessage(await postAuth('/api/auth/enroll-email', { email, username, password }))
-  }
-
   return (
     <main className="auth-shell">
       <header className="auth-topbar">
@@ -124,23 +113,19 @@ export default function AuthPage({
           <p className="auth-intro">
             {view === 'login'
               ? selectedGenerator ? `Log in to open ${selectedGenerator}.` : 'Log in to continue to your creative studios.'
-              : view === 'forgot' ? 'We’ll email a reset link if an active verified account matches that Gmail address.'
+              : view === 'forgot' ? 'We’ll email a reset link if an active account matches that Gmail address.'
                 : view === 'reset' ? 'Password-reset links expire after 30 minutes and can only be used once.'
-                  : view === 'enroll' ? 'Verify ownership of your existing username and password, then confirm your Gmail address.'
-                    : view === 'verify' ? 'Confirm the request to activate your verified email address. This link can only be used once.'
-                    : 'Your account, security, and daily AI generation allowance.'}
+                  : 'Your account, security, and daily AI generation allowance.'}
           </p>
 
           {view === 'login' && (
             <form className="auth-form" onSubmit={(event) => void submit(event, () => onLogin(email, password))}>
               <label htmlFor="auth-email">GMAIL ADDRESS</label>
-              <input id="auth-email" name="email" type="email" autoComplete="username" autoCapitalize="none" required value={email} onChange={(event) => setEmail(event.target.value)} />
+              <input id="auth-email" name="email" type="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={(event) => setEmail(event.target.value)} />
               <label htmlFor="auth-password">PASSWORD</label>
               <input id="auth-password" name="password" type="password" autoComplete="current-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
               {(error || formError) && <p className="auth-message is-error" role="alert">{formError || error}</p>}
-              {verificationMessage && <p className="auth-message" role="status">{verificationMessage}</p>}
               <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'LOGGING IN…' : 'LOG IN'} <span aria-hidden="true">↗</span></button>
-              <button className="auth-text-link auth-forgot-link" type="button" onClick={() => { setFormError(''); setMessage(''); onNavigate('forgot') }}>Forgot password?</button>
             </form>
           )}
 
@@ -164,34 +149,9 @@ export default function AuthPage({
             </form>
           )}
 
-          {view === 'verify' && (
-            <form className="auth-form" onSubmit={(event) => void submit(event, async () => {
-              setMessage(await postAuth('/api/auth/verify-email', { token: verifyToken }))
-            })}>
-              {message && <p className="auth-message" role="status">{message}</p>}
-              {formError && <p className="auth-message is-error" role="alert">{formError}</p>}
-              <button className="auth-submit" type="submit" disabled={busy || !verifyToken}>{busy ? 'VERIFYING…' : 'VERIFY EMAIL'} <span aria-hidden="true">↗</span></button>
-            </form>
-          )}
-
-          {view === 'enroll' && (
-            <form className="auth-form" onSubmit={(event) => void submit(event, submitEnroll)}>
-              <label htmlFor="auth-enroll-username">EXISTING USERNAME</label>
-              <input id="auth-enroll-username" name="username" autoComplete="username" autoCapitalize="none" minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" required value={username} onChange={(event) => setUsername(event.target.value)} />
-              <label htmlFor="auth-enroll-email">GMAIL ADDRESS</label>
-              <input id="auth-enroll-email" name="email" type="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={(event) => setEmail(event.target.value)} />
-              <label htmlFor="auth-enroll-password">EXISTING PASSWORD</label>
-              <input id="auth-enroll-password" name="current-password" type="password" autoComplete="current-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
-              {message && <p className="auth-message" role="status">{message}</p>}
-              {formError && <p className="auth-message is-error" role="alert">{formError}</p>}
-              <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'SENDING…' : 'SEND VERIFICATION LINK'} <span aria-hidden="true">↗</span></button>
-            </form>
-          )}
-
           {view === 'profile' && user && (
             <div className="auth-profile">
               <dl>
-                <div><dt>USERNAME</dt><dd>{user.username}</dd></div>
                 <div><dt>VERIFIED EMAIL</dt><dd>{user.email}</dd></div>
                 <div><dt>ACCOUNT ROLE</dt><dd>{user.role === 'admin' ? 'Administrator' : 'Creator'}</dd></div>
                 <div><dt>TODAY’S GPT-5 MINI CREDITS</dt><dd>{credits ? `${credits.remaining} of ${credits.limit} remaining (UTC)` : 'Usage unavailable'}</dd></div>
@@ -203,15 +163,15 @@ export default function AuthPage({
 
           <div className="auth-secondary">
             {view === 'login' ? (
-              <>Need an account? Contact an administrator.<br />
-                <button className="auth-text-link" type="button" onClick={() => { setMessage(''); setFormError(''); onNavigate('enroll') }}>Verify an existing account</button></>
+              <>Accounts are created by an administrator.<br />
+                <button className="auth-text-link" type="button" onClick={() => { setFormError(''); setMessage(''); onNavigate('forgot') }}>Forgot password?</button></>
             ) : view === 'profile' ? (
               <button className="auth-text-link" type="button" onClick={() => onNavigate('workspace')}>Back to workspace</button>
             ) : (
               <button className="auth-text-link" type="button" onClick={() => { setMessage(''); setFormError(''); onNavigate('login') }}>Back to log in</button>
             )}
           </div>
-          <p className="auth-security-note">Sessions use a secure HttpOnly cookie. Reset and verification tokens are single-use.</p>
+          <p className="auth-security-note">Sessions use a secure HttpOnly cookie. Password-reset tokens are single-use.</p>
         </div>
       </section>
     </main>

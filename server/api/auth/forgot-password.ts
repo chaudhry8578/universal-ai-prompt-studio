@@ -32,7 +32,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       await client.query('BEGIN')
       const user = await client.query<{ id: string; email: string }>(
         `SELECT id, email FROM app_users
-         WHERE email_identity = $1 AND email_verified_at IS NOT NULL AND is_active = true`,
+         WHERE email_identity = $1 AND is_active = true`,
         [email.identity],
       )
       if (user.rows[0]) {
