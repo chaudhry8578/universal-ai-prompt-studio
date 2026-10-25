@@ -954,6 +954,11 @@ body {
 .admin-code-create { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
 .admin-code-create label { color: #c8b990; font: 8px var(--mono); letter-spacing: .08em; }
 .admin-code-create select { min-height: 36px; padding: 0 10px; border: 1px solid rgba(225, 205, 159, .2); background: #100e09; color: #f5eedf; font-size: 11px; }
+.admin-user-create { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: end; gap: 10px; margin-bottom: 18px; }
+.admin-user-create > div { display: grid; gap: 7px; }
+.admin-user-create label { color: #c8b990; font: 8px var(--mono); letter-spacing: .08em; }
+.admin-user-create input { width: 100%; min-height: 36px; padding: 0 9px; border: 1px solid rgba(225, 205, 159, .2); background: #100e09; color: #f5eedf; font-size: 11px; }
+.admin-user-create .admin-action { min-height: 36px; }
 .admin-new-code { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; padding: 12px; border: 1px solid rgba(211, 170, 75, .32); background: rgba(130, 94, 34, .1); }
 .admin-new-code code { color: #f1d795; font-size: 11px; overflow-wrap: anywhere; }
 .admin-table-wrap { width: 100%; overflow-x: auto; }
@@ -987,6 +992,7 @@ body {
   .admin-heading { align-items: flex-start; }
   .admin-panel-heading { flex-direction: column; }
   .admin-panel-heading > p { text-align: left; }
+  .admin-user-create { grid-template-columns: 1fr; }
   .admin-table { min-width: 690px; }
   .home-shell.app-shell { padding-right: 20px; padding-left: 20px; }
   .studio-hero { grid-template-columns: 1fr .8fr; min-height: 300px; padding: 25px 24px; }

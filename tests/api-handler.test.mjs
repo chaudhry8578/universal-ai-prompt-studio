@@ -44,6 +44,28 @@ test('Vercel handler dispatches rewritten API paths through the shared router', 
   assert.match(res.result.headers['content-type'], /^application\/json/)
 })
 
+test('account creation and registration code APIs reject unauthenticated requests', async () => {
+  const requests = [
+    { path: 'admin/users', method: 'POST', body: { username: 'new_user', email: 'newuser@gmail.com', password: 'test-password-value' }, status: 401 },
+    { path: 'admin/access-codes', method: 'POST', body: { expiresInDays: null }, status: 401 },
+    { path: 'auth/register', method: 'POST', body: { username: 'new_user', email: 'newuser@gmail.com', password: 'test-password-value', accessCode: 'UAS-test' }, status: 401 },
+  ]
+  for (const request of requests) {
+    const res = createResponse()
+    await handler(
+      {
+        method: request.method,
+        url: `/api?_apiPath=${request.path}`,
+        headers: { host: 'studio.example', origin: 'https://studio.example', 'content-type': 'application/json' },
+        body: request.body,
+      },
+      res,
+    )
+    assert.equal(res.result.statusCode, request.status, request.path)
+    assert.equal(res.result.body.error, 'Authentication required.', request.path)
+  }
+})
+
 test('bootstrap accepts a bodyless POST format while preserving bearer and body checks', async () => {
   const config = {
     ADMIN_BOOTSTRAP_TOKEN: 'test-bootstrap-token-with-at-least-32-chars',
@@ -172,6 +194,51 @@ test('Admin activation does not expose a platform response body for HTTP 415', a
   }
 })
 
+test('bootstrap identifies missing or invalid configuration without exposing values', async () => {
+  const config = {
+    ADMIN_BOOTSTRAP_TOKEN: 'test-bootstrap-token-with-at-least-32-chars',
+    BOOTSTRAP_ADMIN_USERNAME: 'bootstrap_admin',
+    BOOTSTRAP_ADMIN_EMAIL: 'not-a-gmail-address',
+    BOOTSTRAP_ADMIN_PASSWORD: 'test-bootstrap-password',
+  }
+  const envKeys = Object.keys(config)
+  const previous = new Map(envKeys.map((key) => [key, process.env[key]]))
+  const makeRequest = async () => {
+    const res = createResponse()
+    await handler(
+      {
+        method: 'POST',
+        url: '/api?_apiPath=auth/bootstrap',
+        headers: { host: 'studio.example', origin: 'https://studio.example' },
+      },
+      res,
+    )
+    return res.result
+  }
+
+  try {
+    for (const key of envKeys) delete process.env[key]
+    const missing = await makeRequest()
+    assert.equal(missing.statusCode, 503)
+    assert.deepEqual(missing.body, {
+      error: 'Missing server-side environment variables: ADMIN_BOOTSTRAP_TOKEN, BOOTSTRAP_ADMIN_USERNAME, BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD.',
+    })
+
+    Object.assign(process.env, config)
+    const invalidEmail = await makeRequest()
+    assert.equal(invalidEmail.statusCode, 503)
+    assert.deepEqual(invalidEmail.body, {
+      error: 'BOOTSTRAP_ADMIN_EMAIL must be a valid Gmail address.',
+    })
+    assert.doesNotMatch(JSON.stringify(invalidEmail.body), /not-a-gmail-address/)
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
+})
+
 test('Vercel rewrites both Admin activation URLs to the SPA entry point', async () => {
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'))
   const activationRewrites = config.rewrites.filter((rewrite) =>
@@ -221,4 +288,24 @@ test('API error logging does not expose raw error details', () => {
   assert.deepEqual(logged, [['[auth/bootstrap] Request failed.']])
   assert.equal(res.result.statusCode, 500)
   assert.deepEqual(res.result.body, { error: 'The request could not be completed. Please try again.' })
+})
+
+test('API reports incomplete database migrations without exposing database details', () => {
+  const res = createResponse()
+  const originalError = console.error
+  const logged = []
+  console.error = (...args) => logged.push(args)
+
+  try {
+    handleApiError(res, 'admin/access-codes', Object.assign(new Error('private relation details'), { code: '42P01' }))
+  } finally {
+    console.error = originalError
+  }
+
+  assert.equal(res.result.statusCode, 503)
+  assert.deepEqual(res.result.body, {
+    error: 'Database schema is incomplete. Apply the latest database migrations and try again.',
+  })
+  assert.deepEqual(logged, [['[admin/access-codes] Request failed (SQLSTATE 42P01).']])
+  assert.doesNotMatch(JSON.stringify(res.result.body), /private relation details|42P01/)
 })

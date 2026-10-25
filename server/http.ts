@@ -59,12 +59,24 @@ export function isSameOrigin(req: ApiRequest): boolean {
   }
 }
 
+function getDatabaseErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined
+  return typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : undefined
+}
+
 export function handleApiError(res: ApiResponse, context: string, error: unknown): void {
   if (error instanceof Error && error.name === 'ConfigurationError') {
     res.status(503).json({ error: error.message })
     return
   }
 
-  console.error(`[${context}] Request failed.`)
+  const databaseErrorCode = getDatabaseErrorCode(error)
+  if (databaseErrorCode === '42P01' || databaseErrorCode === '42703') {
+    console.error(`[${context}] Request failed (SQLSTATE ${databaseErrorCode}).`)
+    res.status(503).json({ error: 'Database schema is incomplete. Apply the latest database migrations and try again.' })
+    return
+  }
+
+  console.error(`[${context}] Request failed${databaseErrorCode ? ` (SQLSTATE ${databaseErrorCode})` : ''}.`)
   res.status(500).json({ error: 'The request could not be completed. Please try again.' })
 }

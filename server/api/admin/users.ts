@@ -1,7 +1,5 @@
 import { getAuthenticatedUser, hashPassword, isAdmin, isValidPassword, normalizeGmail, normalizeUsername } from '../../auth.js'
-import { createEmailVerificationToken } from '../../auth-tokens.js'
 import { getDatabase } from '../../database.js'
-import { createActionUrl, sendAuthEmail } from '../../email.js'
 import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http.js'
 
 function isActiveAccountLimitError(error: unknown): boolean {
@@ -54,19 +52,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     try {
       await client.query('BEGIN')
       const result = await client.query<{ id: string; username: string; email: string; role: string; is_active: boolean }>(
-        `INSERT INTO app_users (username, password_hash, role, is_active, email)
-         VALUES ($1, $2, 'user', false, $3)
+        `INSERT INTO app_users (username, password_hash, role, is_active, email, email_verified_at)
+         VALUES ($1, $2, 'user', true, $3, now())
          RETURNING id, username, email, role, is_active`,
         [username, passwordHash, email.email],
       )
-      const verificationToken = await createEmailVerificationToken(client, result.rows[0].id)
-      await sendAuthEmail(
-        email.email,
-        'Verify your Universal AI Prompt Studio account',
-        `An administrator created an account for you. Verify your email within 24 hours:\n\n${createActionUrl('/', verificationToken, 'verify')}\n`,
-      )
       await client.query('COMMIT')
-      res.status(201).json({ user: result.rows[0], message: 'Account created. The user must verify their email before the account is activated.' })
+      res.status(201).json({ user: result.rows[0], message: 'Account created and activated.' })
     } catch (error) {
       await client.query('ROLLBACK')
       throw error
@@ -79,7 +71,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return
     }
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
-      res.status(409).json({ error: 'That username is already in use.' })
+      res.status(409).json({ error: 'That username or Gmail address is already associated with an account.' })
       return
     }
     handleApiError(res, 'admin/users', error)

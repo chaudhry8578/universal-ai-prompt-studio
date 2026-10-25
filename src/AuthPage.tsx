@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { readJsonResponse } from './api-response'
 
-type AuthView = 'login' | 'register' | 'forgot' | 'reset' | 'enroll' | 'verify' | 'profile' | 'workspace'
+type AuthView = 'login' | 'forgot' | 'reset' | 'enroll' | 'verify' | 'profile' | 'workspace'
 type AuthUser = { id: string; username: string; email: string; role: 'admin' | 'user' }
 type Credits = { date: string; limit: number; used: number; remaining: number }
 
@@ -62,17 +62,15 @@ export default function AuthPage({
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [accessCode, setAccessCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(verificationMessage ?? '')
   const [formError, setFormError] = useState('')
   const title = view === 'login' ? 'Welcome back'
-    : view === 'register' ? 'Create your account'
-      : view === 'forgot' ? 'Reset your password'
-        : view === 'reset' ? 'Choose a new password'
-          : view === 'enroll' ? 'Verify your existing account'
-            : view === 'verify' ? 'Confirm your email'
-            : 'Your profile'
+    : view === 'forgot' ? 'Reset your password'
+      : view === 'reset' ? 'Choose a new password'
+        : view === 'enroll' ? 'Verify your existing account'
+          : view === 'verify' ? 'Confirm your email'
+          : 'Your profile'
 
   async function submit(event: FormEvent<HTMLFormElement>, action: () => Promise<void>) {
     event.preventDefault()
@@ -92,16 +90,8 @@ export default function AuthPage({
     }
   }
 
-  async function submitRegister() {
-    setMessage(await postAuth('/api/auth/register', { email, username, password, accessCode }))
-  }
-
   async function submitForgot() {
     setMessage(await postAuth('/api/auth/forgot-password', { email }))
-  }
-
-  async function resendVerification() {
-    setMessage(await postAuth('/api/auth/resend-verification', { email }))
   }
 
   async function submitReset() {
@@ -134,10 +124,9 @@ export default function AuthPage({
           <p className="auth-intro">
             {view === 'login'
               ? selectedGenerator ? `Log in to open ${selectedGenerator}.` : 'Log in to continue to your creative studios.'
-              : view === 'register' ? 'Use a Gmail address, choose your username and password, and enter an administrator-issued access code.'
-                : view === 'forgot' ? 'We’ll email a reset link if an active verified account matches that Gmail address.'
-                  : view === 'reset' ? 'Password-reset links expire after 30 minutes and can only be used once.'
-                    : view === 'enroll' ? 'Verify ownership of your existing username and password, then confirm your Gmail address.'
+              : view === 'forgot' ? 'We’ll email a reset link if an active verified account matches that Gmail address.'
+                : view === 'reset' ? 'Password-reset links expire after 30 minutes and can only be used once.'
+                  : view === 'enroll' ? 'Verify ownership of your existing username and password, then confirm your Gmail address.'
                     : view === 'verify' ? 'Confirm the request to activate your verified email address. This link can only be used once.'
                     : 'Your account, security, and daily AI generation allowance.'}
           </p>
@@ -152,23 +141,6 @@ export default function AuthPage({
               {verificationMessage && <p className="auth-message" role="status">{verificationMessage}</p>}
               <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'LOGGING IN…' : 'LOG IN'} <span aria-hidden="true">↗</span></button>
               <button className="auth-text-link auth-forgot-link" type="button" onClick={() => { setFormError(''); setMessage(''); onNavigate('forgot') }}>Forgot password?</button>
-            </form>
-          )}
-
-          {view === 'register' && (
-            <form className="auth-form" onSubmit={(event) => void submit(event, submitRegister)}>
-              <label htmlFor="auth-register-email">GMAIL ADDRESS</label>
-              <input id="auth-register-email" name="email" type="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={(event) => setEmail(event.target.value)} />
-              <label htmlFor="auth-register-username">USERNAME</label>
-              <input id="auth-register-username" name="username" autoComplete="username" autoCapitalize="none" minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" required value={username} onChange={(event) => setUsername(event.target.value)} />
-              <label htmlFor="auth-register-password">WEBSITE PASSWORD</label>
-              <input id="auth-register-password" name="new-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
-              <label htmlFor="auth-access-code">ADMIN-ISSUED ACCESS CODE</label>
-              <input id="auth-access-code" name="accessCode" autoComplete="off" pattern="UAS-[A-Fa-f0-9]{64}" required value={accessCode} onChange={(event) => setAccessCode(event.target.value)} />
-              {message && <p className="auth-message" role="status">{message}</p>}
-              {formError && <p className="auth-message is-error" role="alert">{formError}</p>}
-              <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'SENDING…' : 'CREATE ACCOUNT'} <span aria-hidden="true">↗</span></button>
-              {message && <button className="auth-text-link" type="button" disabled={busy} onClick={() => void runAction(resendVerification)}>Resend verification email</button>}
             </form>
           )}
 
@@ -231,7 +203,7 @@ export default function AuthPage({
 
           <div className="auth-secondary">
             {view === 'login' ? (
-              <>Need an account? <button className="auth-text-link" type="button" onClick={() => { setMessage(''); setFormError(''); onNavigate('register') }}>Register with an access code</button><br />
+              <>Need an account? Contact an administrator.<br />
                 <button className="auth-text-link" type="button" onClick={() => { setMessage(''); setFormError(''); onNavigate('enroll') }}>Verify an existing account</button></>
             ) : view === 'profile' ? (
               <button className="auth-text-link" type="button" onClick={() => onNavigate('workspace')}>Back to workspace</button>

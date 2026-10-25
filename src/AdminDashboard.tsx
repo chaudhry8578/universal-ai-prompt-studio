@@ -16,7 +16,8 @@ type AdminUser = {
 type AccessCode = {
   id: string
   created_at: string
-  expires_at: string
+  expires_at: string | null
+  never_expires: boolean
   revoked_at: string | null
   redeemed_at: string | null
   redeemed_by_user_id: string | null
@@ -47,8 +48,11 @@ export default function AdminDashboard() {
   const [codes, setCodes] = useState<AccessCode[]>([])
   const [usage, setUsage] = useState<Record<string, number>>({})
   const [resetPasswords, setResetPasswords] = useState<Record<string, string>>({})
+  const [newUsername, setNewUsername] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newPassword, setNewPassword] = useState('')
   const [newCode, setNewCode] = useState('')
-  const [expiresInDays, setExpiresInDays] = useState(30)
+  const [expiresInDays, setExpiresInDays] = useState<number | null>(30)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -74,6 +78,29 @@ export default function AdminDashboard() {
   }, [date])
 
   useEffect(() => { void refresh() }, [refresh])
+
+  async function createUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusy(true)
+    setMessage('')
+    setError('')
+    try {
+      await requestJson('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newUsername, email: newEmail, password: newPassword }),
+      })
+      setNewUsername('')
+      setNewEmail('')
+      setNewPassword('')
+      setMessage('Account created and active. Share the temporary password with the user securely.')
+      await refresh()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not create the account.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function createCode() {
     setBusy(true)
@@ -189,8 +216,8 @@ export default function AdminDashboard() {
         <div className="admin-panel-heading"><div><span>01</span><h2 id="codes-title">Single-use registration codes</h2></div><p>Only the code creator can view a newly generated code.</p></div>
         <div className="admin-code-create">
           <label htmlFor="admin-code-expiry">EXPIRES IN</label>
-          <select id="admin-code-expiry" value={expiresInDays} onChange={(event) => setExpiresInDays(Number(event.target.value))}>
-            <option value={1}>1 day</option><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option>
+          <select id="admin-code-expiry" value={expiresInDays ?? 'never'} onChange={(event) => setExpiresInDays(event.target.value === 'never' ? null : Number(event.target.value))}>
+            <option value={1}>1 day</option><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value="never">Never Expires (Forever)</option>
           </select>
           <button className="admin-action" type="button" onClick={() => void createCode()} disabled={busy}>GENERATE CODE</button>
         </div>
@@ -198,14 +225,29 @@ export default function AdminDashboard() {
         <div className="admin-table-wrap"><table className="admin-table">
           <thead><tr><th>ISSUED</th><th>EXPIRES</th><th>STATUS</th><th>ACTION</th></tr></thead>
           <tbody>{codes.map((code) => {
-            const status = code.redeemed_at ? 'REDEEMED' : code.revoked_at ? 'REVOKED' : new Date(code.expires_at) <= new Date() ? 'EXPIRED' : 'AVAILABLE'
-            return <tr key={code.id}><td>{new Date(code.created_at).toLocaleString()}</td><td>{new Date(code.expires_at).toLocaleString()}</td><td>{status}</td><td>{status === 'AVAILABLE' && <button className="admin-table-action" type="button" onClick={() => void revokeCode(code.id)} disabled={busy}>REVOKE</button>}</td></tr>
+            const status = code.redeemed_at ? 'REDEEMED' : code.revoked_at ? 'REVOKED' : !code.never_expires && code.expires_at && new Date(code.expires_at) <= new Date() ? 'EXPIRED' : 'AVAILABLE'
+            return <tr key={code.id}><td>{new Date(code.created_at).toLocaleString()}</td><td>{code.never_expires ? 'Never' : code.expires_at ? new Date(code.expires_at).toLocaleString() : 'Unavailable'}</td><td>{status}</td><td>{status === 'AVAILABLE' && <button className="admin-table-action" type="button" onClick={() => void revokeCode(code.id)} disabled={busy}>REVOKE</button>}</td></tr>
           })}</tbody>
         </table></div>
       </section>
 
       <section className="admin-panel" aria-labelledby="users-title">
         <div className="admin-panel-heading"><div><span>02</span><h2 id="users-title">Accounts &amp; daily GPT-5 Mini usage</h2></div><p>{users.filter((user) => user.is_active).length} of 50 active accounts · UTC date {date}</p></div>
+        <form className="admin-user-create" onSubmit={(event) => void createUser(event)}>
+          <div>
+            <label htmlFor="admin-new-username">USERNAME</label>
+            <input id="admin-new-username" name="username" autoComplete="off" autoCapitalize="none" minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" required value={newUsername} onChange={(event) => setNewUsername(event.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="admin-new-email">GMAIL ADDRESS</label>
+            <input id="admin-new-email" name="email" type="email" autoComplete="off" autoCapitalize="none" required value={newEmail} onChange={(event) => setNewEmail(event.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="admin-new-password">TEMPORARY PASSWORD</label>
+            <input id="admin-new-password" name="new-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+          </div>
+          <button className="admin-action" type="submit" disabled={busy}>CREATE ACCOUNT</button>
+        </form>
         <div className="admin-table-wrap"><table className="admin-table">
           <thead><tr><th>USERNAME</th><th>GMAIL / VERIFICATION</th><th>STATUS</th><th>AI CREDITS</th><th>LAST LOGIN</th><th>ACTION</th></tr></thead>
           <tbody>{users.map((user) => <tr key={user.id}>
