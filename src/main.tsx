@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import StoryboardGenerator from './StoryboardGenerator'
 import AdminDashboard from './AdminDashboard'
-import AdminBootstrapPage from './AdminBootstrapPage'
+import AdminBootstrapPage, { isAdminBootstrapLocation } from './AdminBootstrapPage'
 import AuthPage, { isAuthUser } from './AuthPage'
 import type { AuthUser, AuthView, Credits } from './AuthPage'
 import { requestAI } from './ai'
@@ -955,7 +955,7 @@ function FacelessProductGenerator({ onBack }: { onBack: () => void }) {
 }
 
 function App() {
-  const isAdminBootstrapPage = new URLSearchParams(window.location.search).get('admin-activate') === '1'
+  const isAdminBootstrapPage = isAdminBootstrapLocation(window.location.pathname, window.location.search)
   const [activeGenerator, setActiveGenerator] = useState<Generator | null>(null)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [sessionReady, setSessionReady] = useState(false)

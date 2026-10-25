@@ -2,6 +2,12 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { readJsonResponse } from './api-response'
 
+export function isAdminBootstrapLocation(pathname: string, search: string): boolean {
+  return pathname === '/admin/activate' ||
+    pathname === '/admin/activate.html' ||
+    new URLSearchParams(search).get('admin-activate') === '1'
+}
+
 export async function requestAdminBootstrap(token: string): Promise<string> {
   const response = await fetch('/api/auth/bootstrap', {
     method: 'POST',

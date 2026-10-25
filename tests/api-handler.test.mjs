@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { after, test } from 'node:test'
 import { createServer } from 'vite'
 
@@ -9,7 +10,7 @@ const vite = await createServer({
 })
 const { default: handler } = await vite.ssrLoadModule('/api/index.ts')
 const { handleApiError } = await vite.ssrLoadModule('/server/http.ts')
-const { requestAdminBootstrap } = await vite.ssrLoadModule('/src/AdminBootstrapPage.tsx')
+const { requestAdminBootstrap, isAdminBootstrapLocation } = await vite.ssrLoadModule('/src/AdminBootstrapPage.tsx')
 after(() => vite.close())
 
 function createResponse() {
@@ -169,6 +170,26 @@ test('Admin activation does not expose a platform response body for HTTP 415', a
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+
+test('Vercel rewrites both Admin activation URLs to the SPA entry point', async () => {
+  const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'))
+  const activationRewrites = config.rewrites.filter((rewrite) =>
+    rewrite.source === '/admin/activate' || rewrite.source === '/admin/activate.html',
+  )
+
+  assert.deepEqual(activationRewrites, [
+    { source: '/admin/activate', destination: '/index.html?admin-activate=1' },
+    { source: '/admin/activate.html', destination: '/index.html?admin-activate=1' },
+  ])
+  assert.ok(config.rewrites.findIndex((rewrite) => rewrite.source === '/api/:path*') > 1)
+})
+
+test('Admin activation page recognizes both path URLs without changing the homepage route', () => {
+  assert.equal(isAdminBootstrapLocation('/admin/activate', ''), true)
+  assert.equal(isAdminBootstrapLocation('/admin/activate.html', ''), true)
+  assert.equal(isAdminBootstrapLocation('/', '?admin-activate=1'), true)
+  assert.equal(isAdminBootstrapLocation('/', ''), false)
 })
 
 test('Vercel handler returns JSON for unexpected routing failures without echoing details', async () => {
