@@ -6,7 +6,7 @@ Universal AI Prompt Studio is a Vite/React creative prompt-generation app. It pr
 
 AI text and prompt requests are sent from the browser to the same-origin `POST /api/generate` Vercel serverless function. The function reads `OPENAI_API_KEY` from the server environment and uses only `gpt-5-mini`. Never add the key to Vite variables or frontend code.
 
-In Vercel, set `OPENAI_API_KEY` in the project’s server-side environment variables and deploy the project. Vercel serves the Vite frontend and a single shared function at `api/index.ts`; `vercel.json` rewrites `/api/...` requests to that entrypoint, which dispatches them to the shared server-side route handlers. This keeps the deployment within the Hobby plan’s function limit. For local development with serverless-function support, use the Vercel CLI (`vercel dev`) and configure `OPENAI_API_KEY` in the local Vercel environment. `npm run dev` starts only Vite; its local prompt templates remain available if `/api/generate` is unavailable.
+In Vercel, set `OPENAI_API_KEY` in the project’s server-side environment variables and deploy the project. Vercel serves the Vite frontend and a single shared Node.js serverless function at `api/index.ts`; `vercel.json` rewrites `/api/...` requests to that entrypoint, which dispatches them to the shared server-side route handlers and returns JSON errors for unexpected failures. This keeps the deployment within the Hobby plan’s function limit. For local development with serverless-function support, use the Vercel CLI (`vercel dev`) and configure `OPENAI_API_KEY` in the local Vercel environment. `npm run dev` starts only Vite; its local prompt templates remain available if `/api/generate` is unavailable.
 
 Supported text tasks are UGC concepts, UGC image prompts, UGC video prompts, Faceless product-image prompts, and Storyboard idea enhancement, setting selection, audio selection, and plan generation. The API accepts text and reference filenames only. Uploaded reference images remain available for preview and optional configured image services, but are not analyzed by this OpenAI text endpoint.
 
@@ -72,4 +72,4 @@ Transfer or mirror the source repository to the destination GitHub account, then
 npm run build
 ```
 
-Run the local identity-helper tests with `node --disable-warning=ExperimentalWarning --test tests/auth-identity.test.mjs`. Database-backed integration, concurrent PostgreSQL quota, email delivery, and live provider tests require configured external services and are not run by the local build.
+Run the local tests with `node --disable-warning=ExperimentalWarning --test tests/*.test.mjs`. Database-backed integration, concurrent PostgreSQL quota, email delivery, and live provider tests require configured external services and are not run by the local build.
