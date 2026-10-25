@@ -154,11 +154,39 @@ export default function AdminDashboard() {
         <form className="admin-user-create" onSubmit={(event) => void createUser(event)}>
           <div>
             <label htmlFor="admin-new-email">GMAIL ADDRESS</label>
-            <input id="admin-new-email" name="email" type="email" autoComplete="off" autoCapitalize="none" required value={newEmail} onChange={(event) => setNewEmail(event.target.value)} />
+            <input
+              id="admin-new-email"
+              name="email"
+              type="email"
+              autoComplete="off"
+              autoCapitalize="none"
+              required
+              value={newEmail}
+              onChange={(event) => setNewEmail(event.target.value)}
+              onInvalid={() => {
+                setMessage('')
+                setError('Enter a valid Gmail address.')
+              }}
+            />
           </div>
           <div>
             <label htmlFor="admin-new-password">PASSWORD</label>
-            <input id="admin-new-password" name="new-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+            <input
+              id="admin-new-password"
+              name="new-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={12}
+              maxLength={128}
+              required
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              onInvalid={() => {
+                setMessage('')
+                setError('Password must be 12–128 characters.')
+              }}
+            />
+            <small>Password must be 12–128 characters.</small>
           </div>
           <button className="admin-action" type="submit" disabled={busy}>CREATE ACCOUNT</button>
         </form>
