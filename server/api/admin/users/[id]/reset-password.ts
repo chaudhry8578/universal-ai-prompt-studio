@@ -1,6 +1,6 @@
-import { getAuthenticatedUser, hashPassword, isAdmin, isValidPassword } from '../../../../server/auth'
-import { getDatabase } from '../../../../server/database'
-import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../../../server/http'
+import { getAuthenticatedUser, hashPassword, isAdmin, isValidPassword } from '../../../../auth'
+import { getDatabase } from '../../../../database'
+import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../../../http'
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') {

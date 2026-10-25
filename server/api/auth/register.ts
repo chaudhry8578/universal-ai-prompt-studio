@@ -1,8 +1,8 @@
-import { createEmailVerificationToken } from '../../server/auth-tokens'
-import { hashPassword, hashOpaqueToken, isValidPassword, normalizeGmail, normalizeUsername, recordAuthAction } from '../../server/auth'
-import { getDatabase } from '../../server/database'
-import { createActionUrl, sendAuthEmail } from '../../server/email'
-import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../server/http'
+import { createEmailVerificationToken } from '../../auth-tokens'
+import { hashPassword, hashOpaqueToken, isValidPassword, normalizeGmail, normalizeUsername, recordAuthAction } from '../../auth'
+import { getDatabase } from '../../database'
+import { createActionUrl, sendAuthEmail } from '../../email'
+import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http'
 
 const GENERIC_REGISTRATION_MESSAGE = 'If the details are eligible, a verification link will be sent to the Gmail address.'
 const INVALID_REGISTRATION_MESSAGE = 'The registration details are invalid, or the access code has expired or already been used.'

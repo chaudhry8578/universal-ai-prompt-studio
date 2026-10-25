@@ -5,11 +5,11 @@ import {
   normalizeUsername,
   recordAuthAction,
   verifyPassword,
-} from '../../server/auth'
-import { createEmailVerificationToken } from '../../server/auth-tokens'
-import { getDatabase } from '../../server/database'
-import { createActionUrl, sendAuthEmail } from '../../server/email'
-import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../server/http'
+} from '../../auth'
+import { createEmailVerificationToken } from '../../auth-tokens'
+import { getDatabase } from '../../database'
+import { createActionUrl, sendAuthEmail } from '../../email'
+import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http'
 
 const GENERIC_MESSAGE = 'If the existing account details are valid, a verification link will be sent to the Gmail address.'
 

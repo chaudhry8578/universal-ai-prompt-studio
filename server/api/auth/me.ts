@@ -1,5 +1,5 @@
-import { getAuthenticatedUser } from '../../server/auth'
-import { handleApiError, type ApiRequest, type ApiResponse } from '../../server/http'
+import { getAuthenticatedUser } from '../../auth'
+import { handleApiError, type ApiRequest, type ApiResponse } from '../../http'
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'GET') {

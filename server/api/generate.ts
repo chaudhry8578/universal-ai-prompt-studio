@@ -1,6 +1,6 @@
-import { getAuthenticatedUser } from '../server/auth'
-import { getDatabase } from '../server/database'
-import { handleApiError, type ApiRequest, type ApiResponse, isSameOrigin } from '../server/http'
+import { getAuthenticatedUser } from '../auth'
+import { getDatabase } from '../database'
+import { handleApiError, type ApiRequest, type ApiResponse, isSameOrigin } from '../http'
 
 type GenerationTask =
   | 'ugc-idea'

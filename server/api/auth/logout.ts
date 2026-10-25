@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
-import { clearSessionCookie } from '../../server/auth'
-import { getDatabase } from '../../server/database'
-import { getCookie, handleApiError, type ApiRequest, type ApiResponse, isSameOrigin } from '../../server/http'
+import { clearSessionCookie } from '../../auth'
+import { getDatabase } from '../../database'
+import { getCookie, handleApiError, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http'
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') {

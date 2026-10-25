@@ -1,8 +1,8 @@
-import { getAuthenticatedUser, hashPassword, isAdmin, isValidPassword, normalizeGmail, normalizeUsername } from '../../server/auth'
-import { createEmailVerificationToken } from '../../server/auth-tokens'
-import { getDatabase } from '../../server/database'
-import { createActionUrl, sendAuthEmail } from '../../server/email'
-import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../server/http'
+import { getAuthenticatedUser, hashPassword, isAdmin, isValidPassword, normalizeGmail, normalizeUsername } from '../../auth'
+import { createEmailVerificationToken } from '../../auth-tokens'
+import { getDatabase } from '../../database'
+import { createActionUrl, sendAuthEmail } from '../../email'
+import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http'
 
 function isActiveAccountLimitError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'constraint' in error &&
