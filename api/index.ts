@@ -1,5 +1,5 @@
-import type { ApiRequest, ApiResponse } from '../server/http'
-import routeApiRequest from '../server/api-router'
+import type { ApiRequest, ApiResponse } from '../server/http.js'
+import routeApiRequest from '../server/api-router.js'
 
 type QueryValue = string | string[] | undefined
 

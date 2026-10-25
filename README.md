@@ -72,4 +72,4 @@ Transfer or mirror the source repository to the destination GitHub account, then
 npm run build
 ```
 
-Run the local tests with `node --disable-warning=ExperimentalWarning --test tests/*.test.mjs`. Database-backed integration, concurrent PostgreSQL quota, email delivery, and live provider tests require configured external services and are not run by the local build.
+`npm run build` also runs the serverless-function regression check: it emits the API and server modules as native Node.js ESM, executes the entry point, and verifies every server module is included in the single production function bundle. Run all local tests with `node --disable-warning=ExperimentalWarning --test --test-concurrency=1 tests/*.test.mjs`. Database-backed integration, concurrent PostgreSQL quota, email delivery, and live provider tests require configured external services and are not run by the local build.

@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg'
-import { createOpaqueToken, hashOpaqueToken } from './auth'
+import { createOpaqueToken, hashOpaqueToken } from './auth.js'
 
 export async function createEmailVerificationToken(client: PoolClient, userId: string): Promise<string> {
   await client.query(

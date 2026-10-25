@@ -1,8 +1,8 @@
-import { createEmailVerificationToken } from '../../auth-tokens'
-import { hashOpaqueToken, normalizeGmail, recordAuthAction } from '../../auth'
-import { getDatabase } from '../../database'
-import { createActionUrl, sendAuthEmail } from '../../email'
-import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http'
+import { createEmailVerificationToken } from '../../auth-tokens.js'
+import { hashOpaqueToken, normalizeGmail, recordAuthAction } from '../../auth.js'
+import { getDatabase } from '../../database.js'
+import { createActionUrl, sendAuthEmail } from '../../email.js'
+import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http.js'
 
 const GENERIC_MESSAGE = 'If an account needs verification, a new link will be sent to its Gmail address.'
 

@@ -1,6 +1,6 @@
-import { hashPassword, getBootstrapToken, matchesSecret, normalizeGmail, normalizeUsername, isValidPassword } from '../../auth'
-import { getDatabase, ConfigurationError } from '../../database'
-import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http'
+import { hashPassword, getBootstrapToken, matchesSecret, normalizeGmail, normalizeUsername, isValidPassword } from '../../auth.js'
+import { getDatabase, ConfigurationError } from '../../database.js'
+import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http.js'
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') {

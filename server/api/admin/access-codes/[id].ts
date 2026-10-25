@@ -1,6 +1,6 @@
-import { getAuthenticatedUser, isAdmin } from '../../../auth'
-import { getDatabase } from '../../../database'
-import { handleApiError, type ApiRequest, type ApiResponse, isSameOrigin } from '../../../http'
+import { getAuthenticatedUser, isAdmin } from '../../../auth.js'
+import { getDatabase } from '../../../database.js'
+import { handleApiError, type ApiRequest, type ApiResponse, isSameOrigin } from '../../../http.js'
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'PATCH') {

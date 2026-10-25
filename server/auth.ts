@@ -6,10 +6,10 @@ import {
   timingSafeEqual,
 } from 'node:crypto'
 import type { Pool } from 'pg'
-import { getDatabase } from './database'
-import type { ApiRequest, ApiResponse, AuthenticatedUser } from './http'
-import { getCookie, getHeader } from './http'
-import { createOpaqueToken, hashOpaqueToken, normalizeGmail } from './identity'
+import { getDatabase } from './database.js'
+import type { ApiRequest, ApiResponse, AuthenticatedUser } from './http.js'
+import { getCookie, getHeader } from './http.js'
+import { createOpaqueToken, hashOpaqueToken, normalizeGmail } from './identity.js'
 
 export { createOpaqueToken, hashOpaqueToken, normalizeGmail }
 

@@ -1,6 +1,6 @@
-import { getAuthenticatedUser, isAdmin } from '../../auth'
-import { getDatabase } from '../../database'
-import { handleApiError, type ApiRequest, type ApiResponse } from '../../http'
+import { getAuthenticatedUser, isAdmin } from '../../auth.js'
+import { getDatabase } from '../../database.js'
+import { handleApiError, type ApiRequest, type ApiResponse } from '../../http.js'
 
 function isCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false

@@ -1,8 +1,8 @@
-import { createPasswordResetToken } from '../../auth-tokens'
-import { hashOpaqueToken, normalizeGmail, recordAuthAction } from '../../auth'
-import { getDatabase } from '../../database'
-import { createActionUrl, sendAuthEmail } from '../../email'
-import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http'
+import { createPasswordResetToken } from '../../auth-tokens.js'
+import { hashOpaqueToken, normalizeGmail, recordAuthAction } from '../../auth.js'
+import { getDatabase } from '../../database.js'
+import { createActionUrl, sendAuthEmail } from '../../email.js'
+import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http.js'
 
 const GENERIC_MESSAGE = 'If an active verified account matches that Gmail address, a password-reset link will be sent.'
 

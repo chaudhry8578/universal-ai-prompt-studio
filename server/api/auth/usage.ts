@@ -1,6 +1,6 @@
-import { getAuthenticatedUser } from '../../auth'
-import { getDatabase } from '../../database'
-import { handleApiError, type ApiRequest, type ApiResponse } from '../../http'
+import { getAuthenticatedUser } from '../../auth.js'
+import { getDatabase } from '../../database.js'
+import { handleApiError, type ApiRequest, type ApiResponse } from '../../http.js'
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'GET') {

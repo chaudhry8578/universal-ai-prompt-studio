@@ -1,4 +1,4 @@
-import { ConfigurationError } from './database'
+import { ConfigurationError } from './database.js'
 
 function getAppBaseUrl(): string {
   const configured = process.env.APP_BASE_URL

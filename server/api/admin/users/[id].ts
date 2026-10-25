@@ -1,6 +1,6 @@
-import { getAuthenticatedUser, isAdmin } from '../../../auth'
-import { getDatabase } from '../../../database'
-import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../../http'
+import { getAuthenticatedUser, isAdmin } from '../../../auth.js'
+import { getDatabase } from '../../../database.js'
+import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../../http.js'
 
 function isActiveAccountLimitError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'constraint' in error &&
