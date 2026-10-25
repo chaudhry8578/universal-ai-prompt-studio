@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import StoryboardGenerator from './StoryboardGenerator'
 import AdminDashboard from './AdminDashboard'
+import AdminBootstrapPage from './AdminBootstrapPage'
 import AuthPage, { isAuthUser } from './AuthPage'
 import type { AuthUser, AuthView, Credits } from './AuthPage'
 import { requestAI } from './ai'
@@ -954,6 +955,7 @@ function FacelessProductGenerator({ onBack }: { onBack: () => void }) {
 }
 
 function App() {
+  const isAdminBootstrapPage = new URLSearchParams(window.location.search).get('admin-activate') === '1'
   const [activeGenerator, setActiveGenerator] = useState<Generator | null>(null)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
@@ -975,6 +977,10 @@ function App() {
   useEffect(() => {
     let current = true
     async function checkSession() {
+      if (isAdminBootstrapPage) {
+        setSessionReady(true)
+        return
+      }
       try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' })
         if (response.status === 401) return
@@ -1210,6 +1216,8 @@ function App() {
       setCopyError('Copy failed. Check browser clipboard permissions and try again.')
     }
   }
+
+  if (isAdminBootstrapPage) return <AdminBootstrapPage />
 
   return (
     <main className={`app-shell ${activeGenerator?.id === 'ugc' ? 'ugc-shell' : ''} ${activeGenerator?.id === 'storyboard' ? 'storyboard-shell' : ''} ${!activeGenerator ? 'home-shell' : ''}`}>

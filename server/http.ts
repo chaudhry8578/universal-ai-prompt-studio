@@ -65,6 +65,6 @@ export function handleApiError(res: ApiResponse, context: string, error: unknown
     return
   }
 
-  console.error(`[${context}] Request failed.`, error instanceof Error ? error.message : 'Unknown error')
+  console.error(`[${context}] Request failed.`)
   res.status(500).json({ error: 'The request could not be completed. Please try again.' })
 }

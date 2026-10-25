@@ -1,6 +1,11 @@
 import { Pool } from 'pg'
 
-export class ConfigurationError extends Error {}
+export class ConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ConfigurationError'
+  }
+}
 
 let pool: Pool | undefined
 

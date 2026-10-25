@@ -2,6 +2,11 @@ import { hashPassword, getBootstrapToken, matchesSecret, normalizeGmail, normali
 import { getDatabase, ConfigurationError } from '../../database.js'
 import { handleApiError, isJsonObject, type ApiRequest, type ApiResponse, isSameOrigin } from '../../http.js'
 
+function isActiveAccountLimitError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'constraint' in error &&
+    (error as { constraint?: unknown }).constraint === 'active_user_limit'
+}
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed.' })
@@ -67,6 +72,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       client.release()
     }
   } catch (error) {
+    if (isActiveAccountLimitError(error)) {
+      res.status(409).json({ error: 'The maximum of 50 active accounts has been reached. Deactivate an account before bootstrapping the administrator.' })
+      return
+    }
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
+      res.status(409).json({ error: 'An account already uses the configured bootstrap username or Gmail address.' })
+      return
+    }
     handleApiError(res, 'auth/bootstrap', error)
   }
 }

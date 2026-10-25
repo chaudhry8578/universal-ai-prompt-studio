@@ -49,7 +49,54 @@ button { color: inherit; }
 @keyframes rise-in { from { opacity: 0; transform: translateY(11px); } to { opacity: 1; transform: translateY(0); } }@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (max-width: 800px) { .app-shell { padding: 0 5%; }.topbar { height: 68px; }.topbar-meta { display: none; }.hero { min-height: 280px; }.hero-index { width: 112px; height: 120px; }.hero-index strong { font-size: 35px; }.generator-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }.generator-card { height: clamp(210px, 35vw, 280px); }.card-title { font-size: 14px; }.card-description { font-size: 9px; }.workspace { min-height: calc(100vh - 68px); } }
 @media (max-width: 560px) { .app-shell { padding: 0 18px; }.topbar { height: 62px; }.brand { font-size: 9px; }.brand-mark { width: 19px; height: 19px; }.topbar-link { font-size: 8px; }.hero { min-height: 258px; align-items: flex-start; padding-top: 44px; }.hero h1 { font-size: 42px; margin-top: 18px; }.hero-copy > p { font-size: 11px; }.hero-index { width: 69px; height: 86px; margin-top: 22px; }.hero-index > span { font-size: 6px; }.hero-index strong { font-size: 28px; margin: 6px 0; }.hero-index i { max-width: 52px; text-align: center; font-size: 6px; line-height: 1.5; }.eyebrow { font-size: 8px; }.eyebrow-line { width: 14px; }.section-heading { font-size: 8px; }.generator-grid { gap: 8px; }.generator-card { height: 215px; padding: 13px; }.card-top { inset: 12px 12px auto; font-size: 7px; }.card-arrow { width: 22px; height: 22px; }.card-content { inset: auto 12px 13px; }.card-tag { padding-bottom: 6px; font-size: 7px; }.card-title { font-size: 12px; overflow-wrap: anywhere; }.card-description { font-size: 8px; line-height: 1.45; }.footer { font-size: 7px; }.workspace { padding-top: 23px; }.workspace-heading { margin: 29px 0 24px; }.workspace-heading h1 { font-size: 27px; overflow-wrap: anywhere; }.workspace-heading p { font-size: 11px; line-height: 1.7; }.workspace-grid { grid-template-columns: 1fr; gap: 10px; }.editor-panel, .result-panel { padding: 16px; min-height: unset; }.result-panel { min-height: 250px; }.panel-heading { padding-bottom: 15px; margin-bottom: 17px; }.editor-panel textarea { min-height: 112px; }.desktop-break { display: none; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
+
+.admin-bootstrap-shell { min-height: 100vh; }
+.admin-bootstrap-card {
+width: min(100%, 540px);
+margin: clamp(48px, 12vh, 120px) auto;
+padding: clamp(22px, 6vw, 38px);
+border: 1px solid rgba(211, 170, 75, .3);
+border-radius: 16px;
+background: linear-gradient(145deg, rgba(26, 19, 40, .96), rgba(16, 13, 26, .95));
+box-shadow: 0 18px 50px rgba(0, 0, 0, .32);
+}
+.admin-bootstrap-card h1 { margin: 18px 0 10px; color: #fff4e0; font-size: clamp(27px, 7vw, 38px); }
+.admin-bootstrap-card > p { color: #b8afbd; font-size: 13px; line-height: 1.7; }
+.admin-bootstrap-card form { display: grid; gap: 11px; margin-top: 25px; }
+.admin-bootstrap-card label { color: #d6c79e; font: 9px var(--mono); letter-spacing: .08em; }
+.admin-bootstrap-card input {
+width: 100%;
+min-height: 50px;
+padding: 0 13px;
+border: 1px solid rgba(225, 205, 159, .28);
+border-radius: 8px;
+outline: none;
+background: #100e16;
+color: #f5eedf;
+font-size: 16px;
+}
+.admin-bootstrap-card input:focus { border-color: #d3aa4b; box-shadow: 0 0 0 3px rgba(211, 170, 75, .14); }
+.admin-bootstrap-card button {
+min-height: 49px;
+margin-top: 5px;
+border: 1px solid rgba(230, 195, 111, .65);
+border-radius: 8px;
+background: linear-gradient(105deg, #735327, #9b7130);
+color: #fff7e6;
+font: 10px var(--mono);
+letter-spacing: .08em;
+}
+.admin-bootstrap-card button:disabled { opacity: .58; }
+.admin-bootstrap-card .admin-bootstrap-note { margin-top: 18px; font-size: 11px; }
+.admin-bootstrap-message, .admin-bootstrap-error { overflow-wrap: anywhere; }
+.admin-bootstrap-message { color: #a8dfbd !important; }
+.admin-bootstrap-error { color: #ff9b9b !important; }
+.admin-bootstrap-home { display: inline-block; margin-top: 12px; color: #e8c878; font-size: 13px; }
+
+@media (max-width: 560px) {
+.admin-bootstrap-card { margin-top: 52px; } }
 
 /* UGC Creator Studio — intentionally scoped to this generator only. */
 .ugc-shell {
