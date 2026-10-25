@@ -1,13 +1,6 @@
-type ApiRequest = {
-  method?: string
-  body?: unknown
-  headers?: Record<string, string | string[] | undefined>
-}
-
-type ApiResponse = {
-  status(code: number): ApiResponse
-  json(value: unknown): void
-}
+import { getAuthenticatedUser } from '../server/auth'
+import { getDatabase } from '../server/database'
+import { handleApiError, type ApiRequest, type ApiResponse, isSameOrigin } from '../server/http'
 
 type GenerationTask =
   | 'ugc-idea'
@@ -54,87 +47,226 @@ function extractOutputText(payload: unknown): string {
   }).join('')
 }
 
+function nonEmpty(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function isValidTaskOutput(task: GenerationTask, input: JsonObject, output: JsonObject): boolean {
+  switch (task) {
+    case 'ugc-idea':
+      return nonEmpty(output.content)
+    case 'ugc-image-prompt':
+    case 'faceless-image-prompt':
+      return nonEmpty(output.prompt)
+    case 'ugc-video-prompts': {
+      const expected = Array.isArray(input.clipDurations) ? input.clipDurations.length : 0
+      return expected > 0 && Array.isArray(output.clips) && output.clips.length === expected &&
+        output.clips.every((clip) => {
+          if (!isJsonObject(clip)) return false
+          const prompt = clip.prompt
+          if (!nonEmpty(prompt)) return false
+          return ['VISUAL:', 'ACTION:', 'CAMERA:', 'DIALOGUE:', 'AUDIO:'].every((section) => prompt.includes(section))
+        })
+    }
+    case 'storyboard-enhance-idea':
+      return nonEmpty(output.idea)
+    case 'storyboard-choose-settings': {
+      const settings = output.settings
+      return isJsonObject(settings) &&
+        (Array.isArray(input.allowedModes) && input.allowedModes.includes(settings.mode)) &&
+        (Array.isArray(input.allowedStyles) && input.allowedStyles.includes(settings.style)) &&
+        (Array.isArray(input.allowedLocations) && input.allowedLocations.includes(settings.location))
+    }
+    case 'storyboard-choose-audio':
+      return (output.mode === 'No Dialogue' || output.mode === 'Character Dialogue' || output.mode === 'Voiceover') &&
+        nonEmpty(output.rationale)
+    case 'storyboard-plan': {
+      const duration = output.durationSeconds
+      const storyboards = output.storyboards
+      if ((duration !== 10 && duration !== 20 && duration !== 30) || !Array.isArray(storyboards) || storyboards.length !== duration / 10) return false
+      let dialogue = ''
+      for (const storyboard of storyboards) {
+        if (!isJsonObject(storyboard) || !nonEmpty(storyboard.title) || !nonEmpty(storyboard.concept) ||
+          !Array.isArray(storyboard.panels) || storyboard.panels.length !== 6) return false
+        let cursor = 0
+        const descriptions = new Set<string>()
+        for (const panel of storyboard.panels) {
+          if (!isJsonObject(panel) || typeof panel.start !== 'number' || typeof panel.end !== 'number' ||
+            !nonEmpty(panel.description) || !nonEmpty(panel.camera) || !nonEmpty(panel.action) ||
+            (panel.dialogue !== undefined && typeof panel.dialogue !== 'string')) return false
+          if (panel.start !== cursor || panel.end <= panel.start || panel.end > 10) return false
+          cursor = panel.end
+          const normalized = panel.description.trim().toLocaleLowerCase()
+          if (descriptions.has(normalized)) return false
+          descriptions.add(normalized)
+          const spoken = typeof panel.dialogue === 'string' ? panel.dialogue : ''
+          if (spoken.trim().split(/\s+/).filter(Boolean).length > 22) return false
+          dialogue += `${spoken} `
+        }
+        if (cursor !== 10 || descriptions.size !== 6) return false
+      }
+      if (input.audio === 'Custom Dialogue' && nonEmpty(input.customDialogue) && !dialogue.includes(input.customDialogue.trim())) return false
+      return true
+    }
+    case 'storyboard-video-prompt': {
+      const prompt = output.prompt
+      if (!nonEmpty(prompt)) return false
+      const sections = ['VISUAL:', 'ACTION:', 'CAMERA:', 'DIALOGUE / VOICEOVER:', 'AUDIO:', 'TIMELINE:']
+      return sections.every((section) => prompt.includes(section)) &&
+        (!nonEmpty(input.customDialogue) || prompt.includes(input.customDialogue.trim()))
+    }
+  }
+}
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed.' })
     return
   }
+  if (!isSameOrigin(req)) {
+    res.status(403).json({ error: 'Cross-origin AI requests are not allowed.' })
+    return
+  }
 
-  const originHeader = req.headers?.origin
-  const hostHeader = req.headers?.['x-forwarded-host'] ?? req.headers?.host
-  const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader
-  const host = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader
-  if (origin && host) {
-    try {
-      if (new URL(origin).host !== host.split(',')[0].trim()) {
-        res.status(403).json({ error: 'Cross-origin AI requests are not allowed.' })
-        return
-      }
-    } catch {
-      res.status(403).json({ error: 'Invalid request origin.' })
+  try {
+    const user = await getAuthenticatedUser(req)
+    if (!user) {
+      res.status(401).json({ error: 'Authentication required.' })
       return
     }
-  }
 
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    res.status(503).json({ error: 'AI is unavailable: OPENAI_API_KEY is not configured on the server.' })
-    return
-  }
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      res.status(503).json({ error: 'AI is unavailable: OPENAI_API_KEY is not configured on the server.' })
+      return
+    }
 
-  if (!isJsonObject(req.body) || !isGenerationTask(req.body.task) || !isJsonObject(req.body.input)) {
-    res.status(400).json({ error: 'Request must include a supported task and an input object.' })
-    return
-  }
+    if (!isJsonObject(req.body) || !isGenerationTask(req.body.task) || !isJsonObject(req.body.input)) {
+      res.status(400).json({ error: 'Request must include a supported task and an input object.' })
+      return
+    }
 
-  const { task, input } = req.body
-  if (JSON.stringify(input).length > 40_000) {
-    res.status(413).json({ error: 'AI request is too large. Shorten the supplied text and try again.' })
-    return
-  }
+    const { task, input } = req.body
+    if (JSON.stringify(input).length > 40_000) {
+      res.status(413).json({ error: 'AI request is too large. Shorten the supplied text and try again.' })
+      return
+    }
 
-  let providerResponse: Response
-  try {
-    providerResponse = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-mini',
-        instructions: taskInstructions[task],
-        input: JSON.stringify(input),
-        max_output_tokens: task === 'storyboard-plan' ? 6000 : 2500,
-        text: { format: { type: 'json_object' } },
-      }),
-    })
-  } catch {
-    res.status(502).json({ error: 'Could not connect to the OpenAI service. Please try again.' })
-    return
-  }
+    const client = await getDatabase().connect()
+    let transactionOpen = false
+    try {
+      await client.query('BEGIN')
+      transactionOpen = true
 
-  if (!providerResponse.ok) {
-    const failure = await providerResponse.json().catch(() => null)
-    const detail = isJsonObject(failure) && isJsonObject(failure.error) && typeof failure.error.message === 'string'
-      ? failure.error.message
-      : `OpenAI returned ${providerResponse.status}.`
-    res.status(502).json({ error: `AI generation failed: ${detail}` })
-    return
-  }
+      const quota = await client.query(
+        `INSERT INTO daily_usage (user_id, usage_date, successful_generations)
+         VALUES ($1, (now() AT TIME ZONE 'UTC')::date, 1)
+         ON CONFLICT (user_id, usage_date) DO UPDATE
+         SET successful_generations = daily_usage.successful_generations + 1
+         WHERE daily_usage.successful_generations < 20
+         RETURNING successful_generations`,
+        [user.id],
+      )
+      if (quota.rows.length === 0) {
+        await client.query('ROLLBACK')
+        transactionOpen = false
+        res.status(429).json({ error: 'Daily AI generation limit reached (20 per UTC day).' })
+        return
+      }
 
-  const completion: unknown = await providerResponse.json()
-  const outputText = extractOutputText(completion)
-  if (!outputText) {
-    res.status(502).json({ error: 'OpenAI returned no generated text. Please try again.' })
-    return
-  }
+      let providerResponse: Response
+      try {
+        providerResponse = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-5-mini',
+            instructions: taskInstructions[task],
+            input: JSON.stringify(input),
+            max_output_tokens: task === 'storyboard-plan' ? 6000 : 2500,
+            text: { format: { type: 'json_object' } },
+          }),
+        })
+      } catch {
+        await client.query('ROLLBACK')
+        transactionOpen = false
+        res.status(502).json({ error: 'Could not connect to the OpenAI service. Please try again.' })
+        return
+      }
 
-  try {
-    const output: unknown = JSON.parse(outputText)
-    if (!isJsonObject(output)) throw new Error('Expected a JSON object.')
-    res.status(200).json(output)
-  } catch {
-    res.status(502).json({ error: 'OpenAI returned an invalid structured response. Please try again.' })
+      if (!providerResponse.ok) {
+        const failure = await providerResponse.json().catch(() => null)
+        const detail = isJsonObject(failure) && isJsonObject(failure.error) && typeof failure.error.message === 'string'
+          ? failure.error.message
+          : `OpenAI returned ${providerResponse.status}.`
+        await client.query('ROLLBACK')
+        transactionOpen = false
+        res.status(502).json({ error: `AI generation failed: ${detail}` })
+        return
+      }
+
+      let completion: unknown
+      try {
+        completion = await providerResponse.json()
+      } catch {
+        await client.query('ROLLBACK')
+        transactionOpen = false
+        res.status(502).json({ error: 'OpenAI returned an invalid response. Please try again.' })
+        return
+      }
+
+      const outputText = extractOutputText(completion)
+      if (!outputText) {
+        await client.query('ROLLBACK')
+        transactionOpen = false
+        res.status(502).json({ error: 'OpenAI returned no generated text. Please try again.' })
+        return
+      }
+
+      let output: unknown
+      try {
+        output = JSON.parse(outputText)
+      } catch {
+        await client.query('ROLLBACK')
+        transactionOpen = false
+        res.status(502).json({ error: 'OpenAI returned an invalid structured response. Please try again.' })
+        return
+      }
+      if (!isJsonObject(output)) {
+        await client.query('ROLLBACK')
+        transactionOpen = false
+        res.status(502).json({ error: 'OpenAI returned an invalid structured response. Please try again.' })
+        return
+      }
+      if (!isValidTaskOutput(task, input, output)) {
+        await client.query('ROLLBACK')
+        transactionOpen = false
+        res.status(502).json({ error: 'OpenAI returned an incomplete or invalid generation. Please try again.' })
+        return
+      }
+
+      await client.query('COMMIT')
+      transactionOpen = false
+      res.status(200).json(output)
+    } catch (error) {
+      if (transactionOpen) {
+        try {
+          await client.query('ROLLBACK')
+        } catch (rollbackError) {
+          console.error(
+            '[generate] Failed to roll back the generation transaction.',
+            rollbackError instanceof Error ? rollbackError.message : 'Unknown error',
+          )
+        }
+      }
+      throw error
+    } finally {
+      client.release()
+    }
+  } catch (error) {
+    handleApiError(res, 'generate', error)
   }
 }

@@ -25,5 +25,6 @@ export async function requestAI(task: string, input: unknown): Promise<JsonObjec
     throw new Error(detail)
   }
   if (!isJsonObject(result)) throw new Error('AI service returned an unexpected response.')
+  window.dispatchEvent(new Event('auth:usage-updated'))
   return result
 }

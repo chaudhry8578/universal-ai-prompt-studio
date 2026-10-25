@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import StoryboardGenerator from './StoryboardGenerator'
+import AdminDashboard from './AdminDashboard'
+import AuthPage, { isAuthUser } from './AuthPage'
+import type { AuthUser, AuthView, Credits } from './AuthPage'
 import { requestAI } from './ai'
 import './styles.css'
 
@@ -951,6 +954,15 @@ function FacelessProductGenerator({ onBack }: { onBack: () => void }) {
 
 function App() {
   const [activeGenerator, setActiveGenerator] = useState<Generator | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [sessionReady, setSessionReady] = useState(false)
+  const [authView, setAuthView] = useState<(AuthView | 'admin') | null>(null)
+  const [pendingGenerator, setPendingGenerator] = useState<Generator | null>(null)
+  const [authError, setAuthError] = useState('')
+  const [credits, setCredits] = useState<Credits | null>(null)
+  const [resetToken, setResetToken] = useState('')
+  const [verifyToken, setVerifyToken] = useState('')
+  const [loggingOut, setLoggingOut] = useState(false)
   const [brief, setBrief] = useState('')
   const [tone, setTone] = useState('Warm & honest')
   const [result, setResult] = useState('')
@@ -960,18 +972,217 @@ function App() {
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
 
   useEffect(() => {
+    let current = true
+    async function checkSession() {
+      try {
+        const response = await fetch('/api/auth/me', { credentials: 'same-origin' })
+        if (response.status === 401) return
+        const payload: unknown = await response.json()
+        if (!response.ok) {
+          const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
+            ? payload.error
+            : 'Could not verify your session. Please log in again.'
+          throw new Error(message)
+        }
+        const sessionUser = typeof payload === 'object' && payload !== null && 'user' in payload ? payload.user : undefined
+        if (!isAuthUser(sessionUser)) throw new Error('The authentication service returned an invalid session.')
+        if (current) setUser(sessionUser)
+      } catch (error) {
+        if (current) setAuthError(error instanceof Error ? error.message : 'Could not verify your session. Please log in again.')
+      } finally {
+        if (current) setSessionReady(true)
+      }
+    }
+    void checkSession()
+    return () => { current = false }
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const reset = params.get('reset')
+    const verification = params.get('verify')
+    if (!reset && !verification) return
+    setResetToken(reset ?? '')
+    setVerifyToken(verification ?? '')
+    setAuthView(reset ? 'reset' : 'verify')
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [])
+
+  async function loadCredits() {
+    if (!user) {
+      setCredits(null)
+      return
+    }
+    try {
+      const response = await fetch('/api/auth/usage', { credentials: 'same-origin' })
+      if (!response.ok) throw new Error(`Usage endpoint returned ${response.status}.`)
+      const payload: unknown = await response.json()
+      if (
+        typeof payload !== 'object' || payload === null ||
+        !('date' in payload) || typeof payload.date !== 'string' ||
+        !('limit' in payload) || typeof payload.limit !== 'number' ||
+        !('used' in payload) || typeof payload.used !== 'number' ||
+        !('remaining' in payload) || typeof payload.remaining !== 'number'
+      ) throw new Error('Usage endpoint returned invalid data.')
+      setCredits({ date: payload.date, limit: payload.limit, used: payload.used, remaining: payload.remaining })
+    } catch {
+      setCredits(null)
+    }
+  }
+
+  useEffect(() => { void loadCredits() }, [user?.id])
+
+  useEffect(() => {
+    const refresh = () => { void loadCredits() }
+    window.addEventListener('auth:usage-updated', refresh)
+    return () => window.removeEventListener('auth:usage-updated', refresh)
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!sessionReady || !user || !pendingGenerator) return
+    setActiveGenerator(pendingGenerator)
+    setPendingGenerator(null)
+    setAuthView(null)
+    setAuthError('')
+  }, [pendingGenerator, sessionReady, user])
+
+  useEffect(() => {
     const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
     const updateMotionPreference = () => setReducedMotion(motionPreference.matches)
     motionPreference.addEventListener('change', updateMotionPreference)
     return () => motionPreference.removeEventListener('change', updateMotionPreference)
   }, [])
 
-  function openGenerator(generator: Generator) {
-    setActiveGenerator(generator)
-    setBrief('')
-    setResult('')
-    setCopied(false)
-    setCopyError('')
+  async function openGenerator(generator: Generator) {
+    if (!user) {
+      setPendingGenerator(generator)
+      setAuthView('login')
+      return
+    }
+    try {
+      const response = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (response.status === 401) {
+        setUser(null)
+        setPendingGenerator(generator)
+        setAuthView('login')
+        return
+      }
+      const payload: unknown = await response.json()
+      if (!response.ok) {
+        const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
+          ? payload.error
+          : 'Your account could not be verified.'
+        throw new Error(message)
+      }
+      const sessionUser = typeof payload === 'object' && payload !== null && 'user' in payload ? payload.user : undefined
+      if (!isAuthUser(sessionUser)) throw new Error('The authentication service returned an invalid session.')
+      setUser(sessionUser)
+      setActiveGenerator(generator)
+      setBrief('')
+      setResult('')
+      setCopied(false)
+      setCopyError('')
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Could not verify your account.')
+    }
+  }
+
+  async function login(email: string, password: string) {
+    setAuthError('')
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email, password }),
+      })
+      const payload: unknown = await response.json()
+      if (!response.ok) {
+        const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
+          ? payload.error
+          : 'Login failed. Please check your details and try again.'
+        throw new Error(message)
+      }
+      const authenticatedUser = typeof payload === 'object' && payload !== null && 'user' in payload ? payload.user : undefined
+      if (!isAuthUser(authenticatedUser)) throw new Error('The authentication service returned an invalid account.')
+      setUser(authenticatedUser)
+      setSessionReady(true)
+      if (!pendingGenerator) setAuthView(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Login failed. Please try again.'
+      setAuthError(message)
+    }
+  }
+
+  async function logout() {
+    setLoggingOut(true)
+    setAuthError('')
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+      })
+      const payload: unknown = await response.json()
+      if (!response.ok) {
+        const message = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
+          ? payload.error
+          : 'Logout failed. Please try again.'
+        throw new Error(message)
+      }
+      setUser(null)
+      setActiveGenerator(null)
+      setPendingGenerator(null)
+      setAuthView(null)
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Logout failed. Please try again.')
+    } finally {
+      setLoggingOut(false)
+    }
+  }
+
+  if (authView === 'admin') {
+    return (
+      <main className="app-shell">
+        <header className="topbar">
+          <button className="brand" onClick={() => { setAuthView(null); setActiveGenerator(null) }} aria-label="Go to home">
+            <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
+            <span>UNIVERSAL<span className="brand-light"> / STUDIO</span></span>
+          </button>
+          <div className="topbar-meta"><span className="status-dot" /> ADMINISTRATION</div>
+          <button className="topbar-link" onClick={() => setAuthView('profile')}>PROFILE <span aria-hidden="true">↗</span></button>
+        </header>
+        <AdminDashboard />
+      </main>
+    )
+  }
+
+  if (authView === 'profile') {
+    return (
+      <AuthPage
+        view="profile"
+        error={authError}
+        onLogin={login}
+        onLogout={() => void logout()}
+        onNavigate={(view) => setAuthView(view === 'workspace' ? null : view)}
+        user={user ?? undefined}
+        credits={credits}
+      />
+    )
+  }
+
+  if (authView) {
+    return (
+      <AuthPage
+        view={authView}
+        selectedGenerator={pendingGenerator?.name}
+        error={authError}
+        onLogin={login}
+        onLogout={() => void logout()}
+        onNavigate={(view) => { setAuthError(''); setAuthView(view === 'workspace' ? null : view) }}
+        resetToken={resetToken}
+        verifyToken={verifyToken}
+      />
+    )
   }
 
   function createPrompt() {
@@ -1026,10 +1237,23 @@ function App() {
           <span>UNIVERSAL{!activeGenerator && ' AI'}<span className="brand-light"> / {activeGenerator ? 'STUDIO' : 'PROMPT STUDIO'}</span></span>
         </button>
         <div className="topbar-meta"><span className="status-dot" /> CREATIVE ENGINE <span className="meta-divider">/</span> 01.26</div>
+        {user && credits && <span className="credits-display" aria-label={`${credits.remaining} AI credits remaining today`}>{credits.remaining} / {credits.limit} AI CREDITS</span>}
         <button className="topbar-link" onClick={() => setActiveGenerator(null)}>
           {activeGenerator ? 'ALL GENERATORS' : 'WORKSPACE'} <span aria-hidden="true">↗</span>
         </button>
+        {user && (
+          <>
+            <button className="session-logout" type="button" onClick={() => setAuthView('profile')}>PROFILE</button>
+            {user.role === 'admin' && <button className="session-logout" type="button" onClick={() => setAuthView('admin')}>ADMIN</button>}
+          </>
+        )}
+        {user && activeGenerator && (
+          <button className="session-logout" type="button" onClick={() => void logout()} disabled={loggingOut}>
+            {loggingOut ? 'LOGGING OUT…' : 'LOG OUT'}
+          </button>
+        )}
       </header>
+      {authError && user && <p className="session-error" role="alert">{authError}</p>}
 
       {activeGenerator?.id === 'ugc' ? (
         <UGCWorkspace />
