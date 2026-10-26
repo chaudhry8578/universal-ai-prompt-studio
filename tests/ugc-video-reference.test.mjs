@@ -45,8 +45,9 @@ test('OpenAI UGC video output validation rejects every image reference except @i
     'VISUAL: Animate the existing scene.',
     'ACTION: Continue the visible action.',
     'CAMERA: Use natural motion.',
-    'DIALOGUE / VOICEOVER: No dialogue.',
-    'AUDIO: Natural ambient sound.',
+    'DIALOGUE / VOICEOVER: No spoken dialogue and no voiceover.',
+    'AUDIO: Natural ambient sound only; no background music.',
+    'No text overlays. No subtitles. No captions.',
   ].join('\n\n')
 
   assert.equal(isValidTaskOutput('ugc-video-prompts', input, { prompt: completePrompt }), true)
