@@ -45,7 +45,7 @@ test('OpenAI UGC video output validation rejects every image reference except @i
     'VISUAL: Animate the existing scene.',
     'ACTION: Continue the visible action.',
     'CAMERA: Use natural motion.',
-    'DIALOGUE / VOICEOVER: No spoken dialogue and no voiceover.',
+    'DIALOGUE / VOICEOVER: No spoken dialogue and no voiceover. No lip-sync.',
     'AUDIO: Natural ambient sound only; no background music.',
     'No text overlays. No subtitles. No captions.',
   ].join('\n\n')

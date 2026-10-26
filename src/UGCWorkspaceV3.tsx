@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
+import {
+  getUgcClipDurations,
+  getUgcStyleDialogueInstruction,
+  normalizeUgcDialogueMode,
+  ugcProductDialogueInstruction,
+} from './ugc-video-prompt'
 
 type ReferenceSlot = 'character' | 'outfit' | 'product'
 type WorkflowStage = 1 | 2 | 3 | 4 | 5 | 6 | 7
@@ -18,8 +24,7 @@ type UGCForm = {
   customAction: string
   style: string
   shotPlanning: 'Auto' | '4 shots' | '5 shots'
-  dialogue: 'None' | 'AI-generated Taglish' | 'Manual on-camera dialogue' | 'ElevenLabs voiceover'
-  manualDialogue: string
+  dialogue: 'None' | 'AI-generated Taglish'
   cameraAngles: string[]
   cameraMovement: string
   additionalNotes: string
@@ -39,7 +44,6 @@ const initialUGCForm: UGCForm = {
   style: 'Natural Filipino UGC',
   shotPlanning: 'Auto',
   dialogue: 'AI-generated Taglish',
-  manualDialogue: '',
   cameraAngles: ['Eye-level'],
   cameraMovement: 'Auto-natural',
   additionalNotes: '',
@@ -64,11 +68,6 @@ function isIdeaResponse(result: unknown): result is IdeaResponse {
     typeof response.taglishDialogue === 'string' &&
     Array.isArray(response.nicheActions) &&
     response.nicheActions.every((item) => typeof item === 'string')
-}
-
-function getClipDurations(duration: Duration): number[] {
-  if (duration === '15') return [10, 5]
-  return Array.from({ length: Number(duration) / 10 }, () => 10)
 }
 
 export default function UGCWorkspaceV3() {
@@ -242,7 +241,7 @@ export default function UGCWorkspaceV3() {
 
   function buildVideoPrompts() {
     if (!approved) return
-    const clips = getClipDurations(form.duration)
+    const clips = getUgcClipDurations(form.duration)
     const angles = form.cameraAngles.length ? form.cameraAngles : ['Eye-level']
     const action = form.action === 'Custom' ? form.customAction.trim() : form.action
     const location = form.location === 'Custom' ? form.customLocation.trim() : form.location
@@ -253,30 +252,31 @@ export default function UGCWorkspaceV3() {
     ].filter(Boolean).join(' ')
     const prompts = clips.map((clipDuration, index) => {
       const shotCount = clipDuration === 5 ? 2 : form.shotPlanning === 'Auto' ? 5 : Number(form.shotPlanning[0])
-      const dialogueInstruction = form.dialogue === 'None'
-        ? 'No spoken dialogue.'
-        : form.dialogue === 'Manual on-camera dialogue'
-          ? `On-camera dialogue in natural Filipino Taglish; lip-sync every word precisely to the visible mouth movements. Use this exact line${form.manualDialogue.trim() ? `: “${form.manualDialogue.trim()}”` : ' (write one from the brief)'}. Keep spoken words to approximately 20–25 maximum per 10-second clip.`
-          : form.dialogue === 'ElevenLabs voiceover'
-            ? 'Use an ElevenLabs-ready natural Filipino Taglish voiceover, not on-camera speech; leave the creator’s lips naturally at rest. Keep spoken words to approximately 20–25 maximum per 10-second clip.'
-            : 'Generate natural, conversational Filipino Taglish on-camera dialogue (not formal or dubbed); exact lip-sync to mouth movements. Keep dialogue to approximately 20–25 spoken words maximum per 10-second clip.'
+      const dialogueInstruction = normalizeUgcDialogueMode(form.dialogue) === 'None'
+        ? 'No spoken dialogue, voiceover, or lip-sync. No subtitles, captions, or text overlays.'
+        : `Generate connected, natural Filipino Gen Z Taglish dialogue with accurate lip-sync. Adapt the speaking personality to the selected UGC style: ${getUgcStyleDialogueInstruction(form.style)} ${ugcProductDialogueInstruction} Keep spoken words to at most ${Math.floor(clipDuration * 2)} for this ${clipDuration}-second clip, fewer when actions need time. Vary phrasing and openings; do not use fixed example scripts, robotic one-liners, or a rigid language ratio. The product idea and additional notes are production instructions that control personality, actions, and visuals and override the default style when explicit; never read them aloud. Preserve exact spoken words only when explicitly requested. Treat Affiliate budol style as an explicit affiliate-style choice, but mention a basket, product link, checkout, or CTA only when a destination is supplied or configured; never invent a link, discount, stock level, or promotion.`
+      const clipProgression = index === 0
+        ? 'Introduce the creator and give an initial product-specific reaction; do not force a CTA.'
+        : index === clips.length - 1
+          ? 'Continue naturally with a closing thought; do not repeat the introduction and use a CTA only when appropriate.'
+          : 'Continue naturally with a new product detail or styling observation; do not repeat the introduction or force a CTA.'
       const shots = Array.from({ length: shotCount }, (_, shotIndex) => {
         const angle = angles[shotIndex % angles.length]
         const shotAction = shotIndex === 0
-          ? 'open with an immediate, candid hook and establish the creator and setting'
+          ? index === 0 ? 'open with an immediate, candid hook and establish the creator and setting' : 'continue the previous clip naturally with a new product-focused detail, without reintroducing the creator'
           : shotIndex === shotCount - 1
             ? 'finish with a natural expression and clear product hero moment'
             : `${action.toLowerCase()} with a believable, gentle product interaction`
         return `${shotIndex + 1}. ${angle} — ${shotAction}; maintain realistic hand anatomy, product scale, and spatial continuity.`
       }).join('\n')
       return [
-        `GOOGLE FLOW — CLIP ${index + 1} OF ${clips.length} (${clipDuration} SECONDS)`,
+        `GOOGLE FLOW — SEPARATE CLIP ${index + 1} OF ${clips.length} (${clipDuration} SECONDS). Use only this clip duration; do not combine clips.`,
+        `Timeline: Begin from the exact approved image. ${index > 0 ? 'Continue the same scene and action naturally from the preceding clip without changing the character, product, location, lighting, or visual style.' : ''} Dialogue progression: ${clipProgression} ${index < clips.length - 1 ? 'End on a natural action beat that flows into the next clip.' : ''}`,
         `Visual: Photorealistic ${form.style.toLowerCase()} UGC in ${location || 'a natural location'} for ${form.niche.toLowerCase()}; vertical 9:16. Match the approved image as the first-frame visual reference. ${referenceLock} Keep the same natural Filipino creator, product, lighting, and scene continuity.`,
-        `Action: ${action || 'demonstrate the product naturally'}; relaxed human movement, genuine reactions, realistic product handling, no abrupt gestures. Plan ${shotCount} purposeful shot${shotCount === 1 ? '' : 's'}:\n${shots}`,
+        `Action: Actual product and creative brief: ${form.productIdea.trim() || 'Use only the product clearly visible in the approved image.'} Treat this and the additional notes as visual/action production instructions, not dialogue. Apply style requests visually without announcing them, and let explicit manual directions override default UGC style behavior. ${action || 'demonstrate the product naturally'}; relaxed human movement, genuine reactions, realistic product handling, no abrupt gestures. Plan ${shotCount} purposeful shot${shotCount === 1 ? '' : 's'}:\n${shots}`,
         `Camera: ${form.cameraMovement} movement; use selected angles (${angles.join(', ')}) in sequence. Smooth motivated transitions, stable framing, no sudden zooms or impossible cuts.`,
         `Dialogue: ${dialogueInstruction}`,
-        'Audio: Clean natural location sound and clear dialogue only. No background music, subtitles, text overlays, added graphics, or watermarks by default.',
-        form.additionalNotes.trim() && `Additional notes: ${form.additionalNotes.trim()}`,
+        `Audio: ${normalizeUgcDialogueMode(form.dialogue) === 'None' ? 'Natural ambient and action sounds only; no speech or voiceover.' : 'Clean natural location sound and clear dialogue only.'} No background music, subtitles, text overlays, added graphics, or watermarks by default. ${form.additionalNotes.trim() ? `Additional production instructions, not dialogue: ${form.additionalNotes.trim()}` : ''}`,
       ].filter(Boolean).join('\n\n')
     })
     setVideoPrompts(prompts)
@@ -366,8 +366,7 @@ export default function UGCWorkspaceV3() {
                   {form.action === 'Custom' && <label>CUSTOM ACTION<input value={form.customAction} onChange={(event) => updateForm('customAction', event.target.value)} placeholder="Describe the action" /></label>}
                   <label>UGC STYLE<select value={form.style} onChange={(event) => updateForm('style', event.target.value)}>{['Natural Filipino UGC', 'Influencer', 'TikTok vlog', 'Aesthetic lifestyle', 'Playful', 'Honest review', 'Affiliate budol', 'Cinematic realistic'].map((item) => <option key={item}>{item}</option>)}</select></label>
                   <label>SHOT PLANNING<select value={form.shotPlanning} onChange={(event) => updateForm('shotPlanning', event.target.value as UGCForm['shotPlanning'])}><option>Auto</option><option>4 shots</option><option>5 shots</option></select></label>
-                  <label>DIALOGUE<select value={form.dialogue} onChange={(event) => updateForm('dialogue', event.target.value as UGCForm['dialogue'])}>{['None', 'AI-generated Taglish', 'Manual on-camera dialogue', 'ElevenLabs voiceover'].map((item) => <option key={item}>{item}</option>)}</select></label>
-                  {form.dialogue === 'Manual on-camera dialogue' && <label className="ugc-setting-wide">MANUAL ON-CAMERA DIALOGUE<textarea value={form.manualDialogue} onChange={(event) => updateForm('manualDialogue', event.target.value)} placeholder="Write the exact line to speak and lip-sync." rows={3} /></label>}
+                  <label>DIALOGUE<select value={normalizeUgcDialogueMode(form.dialogue)} onChange={(event) => updateForm('dialogue', normalizeUgcDialogueMode(event.target.value))}>{['None', 'AI-generated Taglish'].map((item) => <option key={item}>{item}</option>)}</select></label>
                   <label>CAMERA MOVEMENT<select value={form.cameraMovement} onChange={(event) => updateForm('cameraMovement', event.target.value)}>{['Static', 'Handheld', 'Dolly', 'Pan', 'Tilt', 'Orbit', 'Auto-natural'].map((item) => <option key={item}>{item}</option>)}</select></label>
                   <fieldset className="ugc-angle-fieldset">
                     <legend>CAMERA ANGLES <span>Choose up to 3</span></legend>
@@ -456,7 +455,7 @@ export default function UGCWorkspaceV3() {
         <section className="ugc-panel ugc-stage-panel">
           <div className="ugc-panel-heading"><div><span className="ugc-step-label">STAGE 6 / VIDEO PROMPTS</span><h2>Your image is approved</h2></div></div>
           <p>Build structured Google Flow prompts from your setup. This prompt builder is local and does not call an AI service.</p>
-          <div className="ugc-video-gate unlocked"><div className="ugc-video-gate-copy"><span className="ugc-video-symbol" aria-hidden="true">✦</span><span><strong>{form.duration} seconds · {getClipDurations(form.duration).length} clip{getClipDurations(form.duration).length === 1 ? '' : 's'}</strong><small>{form.duration === '15' ? '10-second clip + 5-second segment; trim or combine if your video tool requires it.' : `${form.duration} seconds split into complete 10-second clips.`}</small></span></div></div>
+          <div className="ugc-video-gate unlocked"><div className="ugc-video-gate-copy"><span className="ugc-video-symbol" aria-hidden="true">✦</span><span><strong>{form.duration} seconds · {getUgcClipDurations(form.duration).length} clip{getUgcClipDurations(form.duration).length === 1 ? '' : 's'}</strong><small>{form.duration === '15' ? '10-second prompt + separate 5-second segment; use if supported or trim as needed.' : `${form.duration} seconds split into separate 10-second prompts.`}</small></span></div></div>
           <button className="ugc-video-button" onClick={buildVideoPrompts}>GENERATE GOOGLE FLOW CLIP PROMPTS ↗</button>
         </section>
       )}
@@ -467,7 +466,7 @@ export default function UGCWorkspaceV3() {
           <p>Prompt builder output · not AI-generated. Each clip is independent and ready to copy.</p>
           {videoPrompts.map((prompt, index) => (
             <article className="ugc-clip-card" key={index}>
-              <div className="ugc-clip-heading"><h3>Clip {index + 1} · {getClipDurations(form.duration)[index]} seconds</h3><button className="ugc-copy-button" onClick={() => copyText(prompt, `clip-${index}`)}>{copied === `clip-${index}` ? 'COPIED ✓' : 'COPY CLIP PROMPT'}</button></div>
+              <div className="ugc-clip-heading">              <h3>Clip {index + 1} · {getUgcClipDurations(form.duration)[index]} seconds</h3><button className="ugc-copy-button" onClick={() => copyText(prompt, `clip-${index}`)}>{copied === `clip-${index}` ? 'COPIED ✓' : 'COPY CLIP PROMPT'}</button></div>
               <pre>{prompt}</pre>
             </article>
           ))}

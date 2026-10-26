@@ -4,6 +4,7 @@ import { handleApiError, type ApiRequest, type ApiResponse, isSameOrigin } from 
 
 type GenerationTask =
   | 'ugc-image-prompt'
+  | 'ugc-image-analysis'
   | 'ugc-video-prompts'
   | 'faceless-image-prompt'
   | 'storyboard-enhance-idea'
@@ -16,9 +17,29 @@ type JsonObject = Record<string, unknown>
 
 declare const process: { env: { OPENAI_API_KEY?: string } }
 
+const ugcStyleDialogueInstructions: Record<string, string> = {
+  'Natural Filipino UGC': 'Relaxed, friendly, believable everyday Filipino conversation; spontaneous and personal, never formal advertising copy.',
+  Influencer: 'Confident, polished, expressive and engaging modern Taglish; talk naturally to followers without sounding like a television commercial.',
+  'TikTok vlog': 'Authentic Filipino Gen Z creator energy: casual, spontaneous, playful and conversational, with expressive reactions and only occasional mild profanity when it fits naturally.',
+  'Aesthetic lifestyle': 'Soft, relaxed, fashionable and conversational; understated delivery with no excessive excitement or loud reactions.',
+  Playful: 'Funny, energetic, teasing and naturally entertaining, using Filipino humor without forced slang or repetitive jokes.',
+  'Honest review': 'Straightforward, genuine, realistic and conversational; avoid fake testimonials, exaggerated guarantees and unverified product-performance claims.',
+  'Affiliate budol': 'Persuasive but natural Filipino TikTok affiliate delivery: engaging, conversational and focused on the actual product, never pushy.',
+  'Cinematic realistic': 'Natural, expressive, confident and understated; let the dialogue complement the cinematic visuals without removing dialogue.',
+}
+
+const ugcProductDialogueInstruction = 'First identify the actual product from the user brief and what is visibly shown in the approved image. Discuss only relevant observable details: footwear design, color and outfit styling; clothing appearance, styling and colors; bags’ visible design and styling; beauty products’ actual visible application or demonstration; technology features only when visible or verified; and home products’ demonstrated use. If the product or a detail is unclear, do not guess. Never invent specifications, comfort or performance claims, health benefits, discounts, stock levels, or results. Keep each clip focused on its actual product rather than generic praise.'
+
+function getUgcStyleDialogueInstruction(style: unknown): string {
+  return typeof style === 'string'
+    ? ugcStyleDialogueInstructions[style] ?? 'Natural, relaxed Filipino creator conversation that fits the selected visual style.'
+    : ugcStyleDialogueInstructions['Natural Filipino UGC']
+}
+
 const taskInstructions: Record<GenerationTask, string> = {
   'ugc-image-prompt': 'Return JSON with a prompt string containing one complete, natural, cinematic and ready-to-copy photorealistic vertical 9:16 image prompt. Build it from every supplied video setting and the creative brief, including character, location, action, style, camera and notes. Preserve requested character, outfit and product identity locks using @image1 for character, @image2 for outfit, and @image3 for product when those references are supplied. Match the product appearance exactly; do not redesign packaging, labels, colors, shape, or proportions. Do not invent product claims. Filenames and reference-role metadata are not image data: do not claim to have viewed or analyzed uploaded images.',
-  'ugc-video-prompts': 'Return JSON with exactly one prompt string containing a complete, natural, cinematic, ready-to-copy Google Flow image-to-video prompt. State the selected duration verbatim and include TIMELINE:, VISUAL:, ACTION:, CAMERA:, DIALOGUE / VOICEOVER:, and AUDIO: sections. Use @image1 as the exact provided approved image and authoritative first frame. Animate the character and product already visible in @image1. Preserve the exact character identity, face, hairstyle, outfit, product design, branding, accessories, lighting, and background. Maintain continuity with @image1 throughout the video. Do not reconstruct the scene, replace the product, or invent additional elements. Use natural movements and camera motion compatible with the starting image. @image1 is the only image reference; never use or mention @image2, @image3, or any other image reference. Never alter product design, change supplied settings, or invent product claims. Include natural ambient sounds and avoid text overlays, subtitles, captions, or background music by default. Respect the selected dialogue setting. Uploaded image files are not sent to this text service; do not claim to have viewed or analyzed them.',
+  'ugc-image-analysis': 'Return JSON with an analysis string describing only visible details in the approved image: the person and visible pose, outfit, product and packaging, location/background, framing, lighting, and the current hand/product positions. Explicitly identify unclear or obscured details as unknown. Do not infer personality, profession, product benefits, specifications, or unseen details. This visual analysis will guide a later image-to-video prompt, so state what is actually present and what must remain unchanged.',
+  'ugc-video-prompts': 'Return JSON with exactly one prompt string for exactly one separate Google Flow image-to-video clip. Never combine multiple clips or extend the requested clip duration. State this clip duration verbatim and include TIMELINE:, VISUAL:, ACTION:, CAMERA:, DIALOGUE / VOICEOVER:, and AUDIO: sections. Use @image1 as the exact provided approved image and authoritative first frame. Animate the character and product already visible in @image1; preserve the exact character identity, face, hairstyle, outfit, product design, branding, accessories, lighting, and background, maintaining continuity with @image1 throughout and with the supplied clipSequence. Do not reconstruct the scene, replace the product, or invent additional elements. Use natural movements and camera motion compatible with the starting image. @image1 is the ONLY image reference: never use or mention @image2, @image3, or any other image reference. Never redesign the product, invent features, or add characters, outfits, or locations unless specifically requested in the user brief. Treat the user brief and additional notes as visual/action production instructions, not spoken dialogue; never read out or announce style, mood, aesthetic, visual, or action directions. Explicitly quoted speech may be used only when the user clearly requests that the character say those words. When settings.dialogue is None or an obsolete/unrecognized dialogue mode is supplied, specify no spoken dialogue, no voiceover, no lip-sync or speech-like mouth movements, no subtitles, no captions, no text overlays, and keep the video silent-speaking. When settings.dialogue is AI-generated Taglish, include natural Filipino Taglish speech relevant to the product and scene, with accurate lip-sync and a duration-appropriate brief line; do not read production instructions aloud. Never add text overlays, subtitles, captions, floating promotional text, or background music by default; use natural ambient sounds. Uploaded image files are not sent to this text service; do not claim to have viewed or analyzed them.',
   'faceless-image-prompt': 'Return JSON with a prompt string for exactly one photorealistic premium product photograph in vertical 9:16 format. Follow the selected hand, shot, background and composition settings. Preserve product identity based only on the user-provided text; never claim to have viewed or analyzed uploaded images, whose filenames are not image data.',
   'storyboard-enhance-idea': 'Return JSON with an idea string that improves clarity and cinematic specificity while retaining the user’s intent and respecting product-identity constraints. Reference filenames are not image data; do not claim to analyze images.',
   'storyboard-choose-settings': 'Return JSON with settings containing mode, style and location. Choose only values present in allowedModes, allowedStyles and allowedLocations from the input. Preserve explicit user choices. Uploaded reference filenames are not image data; do not claim to analyze images.',
@@ -36,12 +57,43 @@ function isGenerationTask(value: unknown): value is GenerationTask {
 }
 
 export function buildOpenAIRequest(task: GenerationTask, input: JsonObject) {
+  const isUGCImageAnalysis = task === 'ugc-image-analysis'
   const isUGCVideoPrompt = task === 'ugc-video-prompts'
+  const ugcSettings = isUGCVideoPrompt && isJsonObject(input.settings) ? input.settings : undefined
+  const dialogueMode = ugcSettings?.dialogue === 'AI-generated Taglish' ? 'AI-generated Taglish' : 'None'
+  const requestInput = ugcSettings
+    ? { ...input, settings: { ...ugcSettings, dialogue: dialogueMode } }
+    : input
+  const durationSeconds = typeof ugcSettings?.duration === 'string'
+    ? Number.parseInt(ugcSettings.duration, 10)
+    : undefined
+  const ugcDialogueInstructions = dialogueMode === 'None'
+    ? ' For this request, dialogue is None: the prompt must explicitly prohibit speech, voiceover, lip-sync or speech-like mouth movements, subtitles, captions, and all text overlays.'
+    : dialogueMode === 'AI-generated Taglish'
+      ? ` For this request, include connected, natural Filipino Taglish conversation in a modern Gen Z creator voice with accurate lip-sync, adapted to the selected UGC style (${typeof ugcSettings?.style === 'string' ? ugcSettings.style : 'Natural Filipino UGC'}): ${getUgcStyleDialogueInstruction(ugcSettings?.style)} ${ugcProductDialogueInstruction} Keep it to at most ${Math.max(1, Math.floor((durationSeconds ?? 10) * 2))} words for this clip, fewer when the action needs time. Vary the sentence structure and openings; do not use robotic one-liners, fixed example scripts, or a rigid language ratio. The user brief and additional notes control personality, actions, and visual direction and override the default style when explicit; never read those production instructions aloud. Preserve exact spoken lines only when explicitly requested. Treat Affiliate budol style as an explicit affiliate-style choice, but mention a basket, product link, checkout, or CTA only when a destination is supplied or configured; never invent a link, discount, stock level, or promotion.`
+      : ''
+  const clipSequence = isUGCVideoPrompt && isJsonObject(input.clipSequence) ? input.clipSequence : undefined
+  const clipInstructions = typeof clipSequence?.index === 'number' && typeof clipSequence.total === 'number'
+    ? ` This is separate clip ${clipSequence.index} of ${clipSequence.total}; make it independently usable, continue the same scene/action naturally, and do not merge it with another duration.`
+    : ''
+  const approvedImage = isUGCImageAnalysis && isJsonObject(input.approvedImage) ? input.approvedImage : undefined
+  const imageUrl = typeof approvedImage?.dataUrl === 'string' ? approvedImage.dataUrl : approvedImage?.url
+  const analysisTextInput = isUGCImageAnalysis
+    ? `Respond in JSON. Task input:\n${JSON.stringify({ ...input, approvedImage: '[image attached]' })}`
+    : `Respond in JSON. Task input:\n${JSON.stringify(requestInput)}`
   return {
     model: 'gpt-5-mini',
-    instructions: taskInstructions[task],
-    input: `Respond in JSON. Task input:\n${JSON.stringify(input)}`,
-    max_output_tokens: task === 'storyboard-plan' ? 6000 : isUGCVideoPrompt ? 3500 : 2500,
+    instructions: `${taskInstructions[task]}${ugcDialogueInstructions}${clipInstructions}`,
+    input: isUGCImageAnalysis
+      ? [{
+          role: 'user',
+          content: [
+            { type: 'input_text', text: analysisTextInput },
+            { type: 'input_image', image_url: imageUrl, detail: 'high' },
+          ],
+        }]
+      : `Respond in JSON. Task input:\n${JSON.stringify(requestInput)}`,
+    max_output_tokens: task === 'storyboard-plan' ? 6000 : isUGCVideoPrompt ? 3500 : isUGCImageAnalysis ? 1200 : 2500,
     text: isUGCVideoPrompt
       ? {
           format: {
@@ -93,15 +145,39 @@ export function isValidTaskOutput(task: GenerationTask, input: JsonObject, outpu
     case 'ugc-image-prompt':
     case 'faceless-image-prompt':
       return nonEmpty(output.prompt)
+    case 'ugc-image-analysis':
+      return nonEmpty(output.analysis)
     case 'ugc-video-prompts': {
       const prompt = output.prompt
       if (!nonEmpty(prompt)) return false
       const sections = ['TIMELINE:', 'VISUAL:', 'ACTION:', 'CAMERA:', 'DIALOGUE / VOICEOVER:', 'AUDIO:']
       const duration = isJsonObject(input.settings) ? input.settings.duration : undefined
-      return sections.every((section) => prompt.includes(section)) &&
-        typeof duration === 'string' && prompt.includes(duration) &&
-        /@image1\b/i.test(prompt) &&
-        !(prompt.match(/@image\w*/gi) ?? []).some((reference) => !/^@image1$/i.test(reference))
+      if (
+        !sections.every((section) => prompt.includes(section)) ||
+        typeof duration !== 'string' || !prompt.includes(duration) ||
+        !/@image1\b/i.test(prompt) ||
+        /@image(?!1\b)\w*/i.test(prompt) ||
+        !/no background music/i.test(prompt) ||
+        !/natural ambient/i.test(prompt) ||
+        !/no text overlays/i.test(prompt) ||
+        !/no subtitles/i.test(prompt) ||
+        !/no captions/i.test(prompt)
+      ) return false
+      const dialogueMode = isJsonObject(input.settings) && input.settings.dialogue === 'AI-generated Taglish'
+        ? 'AI-generated Taglish'
+        : 'None'
+      if (dialogueMode === 'None') {
+        return /no spoken dialogue/i.test(prompt) &&
+          /no voiceover/i.test(prompt) &&
+          /no lip-sync/i.test(prompt) &&
+          /no subtitles/i.test(prompt) &&
+          /no captions/i.test(prompt) &&
+          /no text overlays/i.test(prompt)
+      }
+      if (dialogueMode === 'AI-generated Taglish') {
+        return /filipino taglish/i.test(prompt) && /accurate lip-sync/i.test(prompt)
+      }
+      return true
     }
     case 'storyboard-enhance-idea':
       return nonEmpty(output.idea)
@@ -182,7 +258,28 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     const { task, input } = req.body
-    if (JSON.stringify(input).length > 40_000) {
+    if (task === 'ugc-image-analysis') {
+      const approvedImage = input.approvedImage
+      const dataUrl = isJsonObject(approvedImage) ? approvedImage.dataUrl : undefined
+      const url = isJsonObject(approvedImage) ? approvedImage.url : undefined
+      const validDataUrl = typeof dataUrl === 'string' &&
+        dataUrl.length <= 950_000 &&
+        /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(dataUrl)
+      let validUrl = false
+      if (typeof url === 'string' && url.length <= 2048) {
+        try {
+          validUrl = new URL(url).protocol === 'https:'
+        } catch {
+          validUrl = false
+        }
+      }
+      if (!validDataUrl && !validUrl) {
+        res.status(400).json({ error: 'Image analysis requires an approved PNG, JPEG, or WebP image.' })
+        return
+      }
+    }
+    const maxInputLength = task === 'ugc-image-analysis' ? 1_000_000 : 40_000
+    if (JSON.stringify(input).length > maxInputLength) {
       res.status(413).json({ error: 'AI request is too large. Shorten the supplied text and try again.' })
       return
     }
