@@ -922,6 +922,11 @@ body {
 .auth-form label { margin-top: 7px; color: #c8b990; font: 8px var(--mono); letter-spacing: .1em; }
 .auth-form input { width: 100%; min-height: 45px; padding: 0 12px; border: 1px solid rgba(225, 205, 159, .2); border-radius: 2px; outline: none; background: rgba(6, 6, 5, .68); color: #f5eedf; font-size: 13px; }
 .auth-form input:focus { border-color: #d5ac4c; box-shadow: 0 0 0 3px rgba(213, 172, 76, .12); }
+.password-field { position: relative; display: flex; align-items: center; width: 100%; }
+.password-field > input { padding-right: 50px; }
+.password-visibility-toggle { position: absolute; top: 50%; right: 0; display: grid; width: 44px; height: 44px; place-items: center; transform: translateY(-50%); border: 0; background: transparent; color: #c8b990; cursor: pointer; touch-action: manipulation; }
+.password-visibility-toggle:hover { color: #e5c56e; }
+.password-visibility-toggle:focus-visible { outline: 1px solid #d5ac4c; outline-offset: -4px; }
 .auth-submit { min-height: 46px; display: flex; align-items: center; justify-content: space-between; margin-top: 11px; padding: 0 15px; border: 1px solid #d3aa4b; background: linear-gradient(105deg, #bb913b, #dfbd68); color: #17130a; font: 800 9px var(--mono); letter-spacing: .09em; cursor: pointer; }
 .auth-submit:hover:not(:disabled) { background: linear-gradient(105deg, #d0a648, #f0d27f); }
 .auth-submit:disabled { cursor: wait; opacity: .7; }

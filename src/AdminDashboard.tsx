@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { readJsonResponse } from './api-response'
+import PasswordInput from './PasswordInput'
 
 type AdminUser = {
   id: string
@@ -171,10 +172,9 @@ export default function AdminDashboard() {
           </div>
           <div>
             <label htmlFor="admin-new-password">PASSWORD</label>
-            <input
+            <PasswordInput
               id="admin-new-password"
               name="new-password"
-              type="password"
               autoComplete="new-password"
               minLength={12}
               maxLength={128}
@@ -201,9 +201,8 @@ export default function AdminDashboard() {
               {user.role === 'user' && <>
                 <button className="admin-table-action" type="button" onClick={() => void setActive(user, !user.is_active)} disabled={busy}>{user.is_active ? 'DISABLE' : 'REACTIVATE'}</button>
                 <form className="admin-account-actions" onSubmit={(event) => void resetPassword(event, user)}>
-                  <input
+                  <PasswordInput
                     aria-label={`New password for ${user.email ?? 'account'}`}
-                    type="password"
                     autoComplete="new-password"
                     minLength={12}
                     maxLength={128}

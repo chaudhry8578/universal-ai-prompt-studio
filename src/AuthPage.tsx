@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { readJsonResponse } from './api-response'
+import PasswordInput from './PasswordInput'
 
 type AuthView = 'login' | 'forgot' | 'reset' | 'profile' | 'workspace'
 type AuthUser = { id: string; email: string; role: 'admin' | 'user' }
@@ -123,7 +124,7 @@ export default function AuthPage({
               <label htmlFor="auth-email">GMAIL ADDRESS</label>
               <input id="auth-email" name="email" type="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={(event) => setEmail(event.target.value)} />
               <label htmlFor="auth-password">PASSWORD</label>
-              <input id="auth-password" name="password" type="password" autoComplete="current-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
+              <PasswordInput id="auth-password" name="password" autoComplete="current-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
               {(error || formError) && <p className="auth-message is-error" role="alert">{formError || error}</p>}
               <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'LOGGING IN…' : 'LOG IN'} <span aria-hidden="true">↗</span></button>
             </form>
@@ -142,7 +143,7 @@ export default function AuthPage({
           {view === 'reset' && (
             <form className="auth-form" onSubmit={(event) => void submit(event, submitReset)}>
               <label htmlFor="auth-reset-password">NEW WEBSITE PASSWORD</label>
-              <input id="auth-reset-password" name="new-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
+              <PasswordInput id="auth-reset-password" name="new-password" autoComplete="new-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
               {message && <p className="auth-message" role="status">{message}</p>}
               {formError && <p className="auth-message is-error" role="alert">{formError}</p>}
               <button className="auth-submit" type="submit" disabled={busy || !resetToken}>{busy ? 'UPDATING…' : 'RESET PASSWORD'} <span aria-hidden="true">↗</span></button>
