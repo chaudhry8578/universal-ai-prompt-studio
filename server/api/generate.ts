@@ -37,6 +37,16 @@ function isGenerationTask(value: unknown): value is GenerationTask {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(taskInstructions, value)
 }
 
+export function buildOpenAIRequest(task: GenerationTask, input: JsonObject) {
+  return {
+    model: 'gpt-5-mini',
+    instructions: taskInstructions[task],
+    input: `Respond in JSON. Task input:\n${JSON.stringify(input)}`,
+    max_output_tokens: task === 'storyboard-plan' ? 6000 : 2500,
+    text: { format: { type: 'json_object' } },
+  }
+}
+
 function extractOutputText(payload: unknown): string {
   if (!isJsonObject(payload) || !Array.isArray(payload.output)) return ''
   return payload.output.flatMap((item) => {
@@ -182,13 +192,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            model: 'gpt-5-mini',
-            instructions: taskInstructions[task],
-            input: JSON.stringify(input),
-            max_output_tokens: task === 'storyboard-plan' ? 6000 : 2500,
-            text: { format: { type: 'json_object' } },
-          }),
+          body: JSON.stringify(buildOpenAIRequest(task, input)),
         })
       } catch {
         await client.query('ROLLBACK')
