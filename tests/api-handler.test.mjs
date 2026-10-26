@@ -44,6 +44,25 @@ test('Vercel handler dispatches rewritten API paths through the shared router', 
   assert.match(res.result.headers['content-type'], /^application\/json/)
 })
 
+test('login rejects invalid usernames without attempting a database connection', async () => {
+  const res = createResponse()
+  await handler(
+    {
+      method: 'POST',
+      url: '/api?_apiPath=auth/login',
+      headers: {
+        host: 'studio.example',
+        origin: 'https://studio.example',
+        'content-type': 'application/json',
+      },
+      body: { username: 'invalid user', password: 'test-password-value' },
+    },
+    res,
+  )
+  assert.equal(res.result.statusCode, 401)
+  assert.deepEqual(res.result.body, { error: 'Invalid Account. Please message the Admin.' })
+})
+
 test('account creation requires authentication and retired registration APIs are disabled', async () => {
   const requests = [
     { path: 'admin/users', method: 'POST', body: { email: 'newuser@gmail.com', password: 'test-password-value' }, status: 401, error: 'Authentication required.' },
@@ -291,6 +310,28 @@ test('API error logging does not expose raw error details', () => {
   assert.deepEqual(logged, [['[auth/bootstrap] Request failed.']])
   assert.equal(res.result.statusCode, 500)
   assert.deepEqual(res.result.body, { error: 'The request could not be completed. Please try again.' })
+})
+
+test('API error logs safe connection codes without exposing raw connection details', () => {
+  const res = createResponse()
+  const originalError = console.error
+  const logged = []
+  console.error = (...args) => logged.push(args)
+
+  try {
+    handleApiError(
+      res,
+      'auth/login',
+      Object.assign(new Error('postgres://user:secret@db.example'), { code: 'ENOTFOUND' }),
+    )
+  } finally {
+    console.error = originalError
+  }
+
+  assert.deepEqual(logged, [['[auth/login] Request failed (error code ENOTFOUND).']])
+  assert.equal(res.result.statusCode, 500)
+  assert.deepEqual(res.result.body, { error: 'The request could not be completed. Please try again.' })
+  assert.doesNotMatch(JSON.stringify(logged), /secret|db\.example/)
 })
 
 test('API reports incomplete database migrations without exposing database details', () => {

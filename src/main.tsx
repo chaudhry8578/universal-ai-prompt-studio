@@ -1093,14 +1093,14 @@ function App() {
     }
   }
 
-  async function login(email: string, password: string) {
+  async function login(username: string, password: string) {
     setAuthError('')
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       })
       const payload = await readJsonResponse(response, 'Login API')
       if (!response.ok) {

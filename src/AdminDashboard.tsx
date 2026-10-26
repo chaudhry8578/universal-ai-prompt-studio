@@ -5,6 +5,7 @@ import PasswordInput from './PasswordInput'
 
 type AdminUser = {
   id: string
+  username: string
   email: string | null
   role: 'admin' | 'user'
   is_active: boolean
@@ -37,6 +38,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [usage, setUsage] = useState<Record<string, number>>({})
   const [resetPasswords, setResetPasswords] = useState<Record<string, string>>({})
+  const [newUsername, setNewUsername] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [message, setMessage] = useState('')
@@ -72,11 +74,12 @@ export default function AdminDashboard() {
       await requestJson('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newEmail, password: newPassword }),
+        body: JSON.stringify({ username: newUsername, email: newEmail, password: newPassword }),
       })
+      setNewUsername('')
       setNewEmail('')
       setNewPassword('')
-      setMessage('Account created and active. Share the password with the user securely.')
+      setMessage('Account created and active. Share the username and password securely.')
       await refresh()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not create the account.')
@@ -154,6 +157,26 @@ export default function AdminDashboard() {
         <div className="admin-panel-heading"><div><span>02</span><h2 id="users-title">Accounts &amp; daily GPT-5 Mini usage</h2></div><p>{users.filter((user) => user.is_active).length} of 50 active accounts · UTC date {date}</p></div>
         <form className="admin-user-create" onSubmit={(event) => void createUser(event)}>
           <div>
+            <label htmlFor="admin-new-username">USERNAME</label>
+            <input
+              id="admin-new-username"
+              name="username"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="none"
+              minLength={3}
+              maxLength={32}
+              pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}"
+              required
+              value={newUsername}
+              onChange={(event) => setNewUsername(event.target.value)}
+              onInvalid={() => {
+                setMessage('')
+                setError('Use 3–32 letters, numbers, underscores, or hyphens; start with a letter or number.')
+              }}
+            />
+          </div>
+          <div>
             <label htmlFor="admin-new-email">GMAIL ADDRESS</label>
             <input
               id="admin-new-email"
@@ -191,9 +214,9 @@ export default function AdminDashboard() {
           <button className="admin-action" type="submit" disabled={busy}>CREATE ACCOUNT</button>
         </form>
         <div className="admin-table-wrap"><table className="admin-table">
-          <thead><tr><th>GMAIL ADDRESS</th><th>STATUS</th><th>DAILY AI USAGE</th><th>LAST LOGIN</th><th>ACTION</th></tr></thead>
+          <thead><tr><th>USERNAME / GMAIL</th><th>STATUS</th><th>DAILY AI USAGE</th><th>LAST LOGIN</th><th>ACTION</th></tr></thead>
           <tbody>{users.map((user) => <tr key={user.id}>
-            <td>{user.email ?? 'Gmail unavailable'}<small>{user.role === 'admin' ? 'ADMINISTRATOR' : 'ACCOUNT'}</small></td>
+            <td>{user.username}<small>{user.email ?? 'Gmail unavailable'} · {user.role === 'admin' ? 'ADMINISTRATOR' : 'ACCOUNT'}</small></td>
             <td>{user.is_active ? 'ACTIVE' : user.admin_disabled_at ? 'DISABLED' : 'INACTIVE'}</td>
             <td>{usage[user.id] ?? 0} / 20</td>
             <td>{user.last_login_at ? new Date(user.last_login_at).toLocaleString() : 'Never'}</td>

@@ -960,7 +960,7 @@ body {
 .admin-code-create label { color: #c8b990; font: 8px var(--mono); letter-spacing: .08em; }
 .admin-code-create select { min-height: 36px; padding: 0 10px; border: 1px solid rgba(225, 205, 159, .2); background: #100e09; color: #f5eedf; font-size: 11px; }
 .admin-user-create { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: end; gap: 10px; margin-bottom: 18px; }
-.admin-user-create > div { display: grid; gap: 7px; }
+.admin-user-create > div { display: grid; min-width: 0; gap: 7px; }
 .admin-user-create label { color: #c8b990; font: 8px var(--mono); letter-spacing: .08em; }
 .admin-user-create input { width: 100%; min-height: 36px; padding: 0 9px; border: 1px solid rgba(225, 205, 159, .2); background: #100e09; color: #f5eedf; font-size: 11px; }
 .admin-user-create .admin-action { min-height: 36px; }
@@ -982,6 +982,7 @@ body {
 @media (max-width: 900px) {
   .workspace { padding-right: 2px; padding-left: 2px; }
   .studio-card { height: clamp(245px, 36vw, 315px); }
+  .admin-user-create { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
   .auth-shell { padding: 0 18px; }

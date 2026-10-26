@@ -15,7 +15,7 @@ export type ApiResponse = {
 export type AuthenticatedUser = {
   id: string
   role: 'admin' | 'user'
-  email: string
+  email: string | null
 }
 
 export function isJsonObject(value: unknown): value is Record<string, unknown> {
@@ -63,6 +63,11 @@ function getDatabaseErrorCode(error: unknown): string | undefined {
   return typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : undefined
 }
 
+function getSafeNetworkErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined
+  return typeof error.code === 'string' && /^[A-Z0-9_]{1,32}$/.test(error.code) ? error.code : undefined
+}
+
 export function handleApiError(res: ApiResponse, context: string, error: unknown): void {
   if (error instanceof Error && error.name === 'ConfigurationError') {
     res.status(503).json({ error: error.message })
@@ -76,6 +81,10 @@ export function handleApiError(res: ApiResponse, context: string, error: unknown
     return
   }
 
-  console.error(`[${context}] Request failed${databaseErrorCode ? ` (SQLSTATE ${databaseErrorCode})` : ''}.`)
+  const safeNetworkErrorCode = getSafeNetworkErrorCode(error)
+  const diagnostic = databaseErrorCode
+    ? ` (SQLSTATE ${databaseErrorCode})`
+    : safeNetworkErrorCode ? ` (error code ${safeNetworkErrorCode})` : ''
+  console.error(`[${context}] Request failed${diagnostic}.`)
   res.status(500).json({ error: 'The request could not be completed. Please try again.' })
 }

@@ -4,6 +4,7 @@ import {
   getDummyPasswordHash,
   isValidPassword,
   normalizeGmail,
+  normalizeUsername,
   recordLoginAttempt,
   setSessionCookie,
   verifyPassword,
@@ -22,13 +23,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return
   }
   if (!isJsonObject(req.body)) {
-    res.status(400).json({ error: 'A Gmail address and password are required.' })
+    res.status(400).json({ error: 'A username and password are required.' })
     return
   }
 
-  const email = normalizeGmail(req.body.email)
+  const username = normalizeUsername(req.body.username)
+  const email = username ? undefined : normalizeGmail(req.body.username ?? req.body.email)
   const password = req.body.password
-  if (!email || !isValidPassword(password)) {
+  if ((!username && !email) || !isValidPassword(password)) {
     res.status(401).json({ error: INVALID_LOGIN_MESSAGE })
     return
   }
@@ -43,14 +45,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const pool = getDatabase()
     const result = await pool.query<{
       id: string
-      email: string
+      email: string | null
       password_hash: string
       role: 'admin' | 'user'
     }>(
       `SELECT id, email, password_hash, role
        FROM app_users
-       WHERE email_identity = $1 AND is_active = true`,
-      [email.identity],
+       WHERE (username = $1 OR email_identity = $2) AND is_active = true`,
+      [username ?? null, email?.identity ?? null],
     )
     const account = result.rows[0]
     const passwordHash = account?.password_hash ?? await getDummyPasswordHash()

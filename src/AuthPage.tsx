@@ -4,14 +4,14 @@ import { readJsonResponse } from './api-response'
 import PasswordInput from './PasswordInput'
 
 type AuthView = 'login' | 'forgot' | 'reset' | 'profile' | 'workspace'
-type AuthUser = { id: string; email: string; role: 'admin' | 'user' }
+type AuthUser = { id: string; email: string | null; role: 'admin' | 'user' }
 type Credits = { date: string; limit: number; used: number; remaining: number }
 
 type AuthPageProps = {
   view: AuthView
   selectedGenerator?: string
   error: string
-  onLogin: (email: string, password: string) => Promise<void>
+  onLogin: (username: string, password: string) => Promise<void>
   onNavigate: (view: AuthView) => void
   onLogout: () => void
   user?: AuthUser
@@ -22,7 +22,7 @@ type AuthPageProps = {
 function isAuthUser(value: unknown): value is AuthUser {
   if (typeof value !== 'object' || value === null) return false
   const user = value as Record<string, unknown>
-  return typeof user.id === 'string' && typeof user.email === 'string' &&
+  return typeof user.id === 'string' && (typeof user.email === 'string' || user.email === null) &&
     (user.role === 'admin' || user.role === 'user')
 }
 
@@ -56,6 +56,7 @@ export default function AuthPage({
   credits,
   resetToken = '',
 }: AuthPageProps) {
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -120,9 +121,10 @@ export default function AuthPage({
           </p>
 
           {view === 'login' && (
-            <form className="auth-form" onSubmit={(event) => void submit(event, () => onLogin(email, password))}>
-              <label htmlFor="auth-email">GMAIL ADDRESS</label>
-              <input id="auth-email" name="email" type="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <form className="auth-form" onSubmit={(event) => void submit(event, () => onLogin(username, password))}>
+              <label htmlFor="auth-username">USERNAME OR GMAIL ADDRESS</label>
+              <input id="auth-username" name="username" type="text" autoComplete="username" autoCapitalize="none" maxLength={254} required value={username} onChange={(event) => setUsername(event.target.value)} />
+              <small>You can also use your registered Gmail address for existing accounts.</small>
               <label htmlFor="auth-password">PASSWORD</label>
               <PasswordInput id="auth-password" name="password" autoComplete="current-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
               {(error || formError) && <p className="auth-message is-error" role="alert">{formError || error}</p>}
@@ -153,7 +155,7 @@ export default function AuthPage({
           {view === 'profile' && user && (
             <div className="auth-profile">
               <dl>
-                <div><dt>VERIFIED EMAIL</dt><dd>{user.email}</dd></div>
+                <div><dt>VERIFIED EMAIL</dt><dd>{user.email ?? 'Not provided'}</dd></div>
                 <div><dt>ACCOUNT ROLE</dt><dd>{user.role === 'admin' ? 'Administrator' : 'Creator'}</dd></div>
                 <div><dt>TODAY’S GPT-5 MINI CREDITS</dt><dd>{credits ? `${credits.remaining} of ${credits.limit} remaining (UTC)` : 'Usage unavailable'}</dd></div>
               </dl>

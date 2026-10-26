@@ -8,7 +8,7 @@ const vite = await createServer({
   server: { middlewareMode: true },
 })
 const { createOpaqueToken, hashOpaqueToken, normalizeGmail } = await vite.ssrLoadModule('/server/identity.ts')
-const { generateInternalUsername, hashPassword, verifyPassword } = await vite.ssrLoadModule('/server/auth.ts')
+const { generateInternalUsername, hashPassword, normalizeUsername, verifyPassword } = await vite.ssrLoadModule('/server/auth.ts')
 const { isSameOrigin } = await vite.ssrLoadModule('/server/http.ts')
 after(() => vite.close())
 
@@ -24,6 +24,13 @@ test('non-Gmail and malformed Gmail addresses are rejected', () => {
     assert.equal(normalizeGmail(email), undefined, email)
   }
   assert.equal(normalizeGmail(null), undefined)
+})
+
+test('usernames are case-insensitive and match the database username format', () => {
+  assert.equal(normalizeUsername('Creator_01'), 'creator_01')
+  for (const username of ['ab', '-creator', 'creator.name', 'creator name', 'a'.repeat(33), null]) {
+    assert.equal(normalizeUsername(username), undefined, String(username))
+  }
 })
 
 test('opaque tokens have 256 bits of URL-safe randomness and are one-way hashed', () => {
